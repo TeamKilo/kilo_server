@@ -1,4 +1,5 @@
 mod adapter;
+mod connect4;
 
 use adapter::GameAdapter;
 use std::collections::HashMap;
