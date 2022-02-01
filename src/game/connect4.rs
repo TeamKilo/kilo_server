@@ -9,7 +9,7 @@ struct Connect4Adapter<'a> {
     game_id: GameId,
     players: Vec<String>,
     state: State,
-    next_move: &'a String,
+    next_move: String,
     game: Connect4<'a>
 }
 
@@ -17,7 +17,7 @@ struct Connect4<'a> {
     board: Vec<Vec<&'a String>> // vector of columns, each variable length.
 }
 
-impl GameAdapter for Connect4Adapter {
+impl GameAdapter for Connect4Adapter<'_> {
     fn new(game_id: GameId) -> Self where Self: Sized {
         Connect4Adapter {
             game_id,
@@ -40,8 +40,8 @@ impl GameAdapter for Connect4Adapter {
 
     fn play_move(&mut self, game_move: GenericGameMove) -> actix_web::Result<()> {
         if self.state != State::InProgress {
-            Err(actix_web::Error::from(GameAdapterError::InvalidGameState(self.state)))
-        }
+            return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(self.state)))
+        };
         todo!()
     }
 
@@ -55,6 +55,6 @@ impl GameAdapter for Connect4Adapter {
     }
 }
 
-impl Connect4 {
+impl Connect4<'_> {
 
 }
