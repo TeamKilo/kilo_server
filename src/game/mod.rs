@@ -1,5 +1,5 @@
-mod adapter;
-mod connect4;
+pub mod adapter;
+pub mod connect4;
 
 use adapter::GameAdapter;
 use std::collections::HashMap;
@@ -11,6 +11,8 @@ use serde::{Serialize, Deserialize};
 use actix_web::{ResponseError, Result};
 use actix_web::http::StatusCode;
 use rand::Rng;
+use serde_json::Value;
+use crate::game::adapter::{GenericGameMove, GenericGameState};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
 pub struct GameId(u128);
@@ -22,6 +24,10 @@ impl GameId {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
         let id: u128 = rng.gen();
+        GameId(id)
+    }
+    // Added for API to create a GameId object to input to the GameManager
+    pub fn from(id: u128) -> Self {
         GameId(id)
     }
 }
@@ -36,6 +42,10 @@ impl SessionId {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
         let id: u128 = rng.gen();
+        SessionId(id)
+    }
+    // Added for API to create a GameId object to input to the GameManager
+    pub fn from(id: u128) -> Self {
         SessionId(id)
     }
 }
@@ -134,13 +144,14 @@ impl GameManager {
         Ok(session_id)
     }
 
-    // pub fn receive_move(&self, session_id: SessionId, encoded_move: ?) -> Result<()> {
-    //     todo!()
-    // }
-    //
-    // pub fn get_state(&self, game_id: GameId) -> Result<?> {
-    //     todo!()
-    // }
+    pub fn receive_move(&self, encoded_move: GenericGameMove) -> Result<()> {
+        // Deleted sessionId because it corresponds to the "player" field in GenericGameMove
+        todo!()
+    }
+
+    pub fn get_state(&self, game_id: GameId) -> Result<GenericGameState> {
+        todo!()
+    }
 
     fn get_game_adapter(&self, game_id: GameId) -> Result<&Mutex<Box<dyn GameAdapter>>> {
         match self.games.get(&game_id) {

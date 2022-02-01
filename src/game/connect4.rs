@@ -5,7 +5,7 @@ use std::vec;
 
 const NUM_PLAYERS: usize = 2;
 
-struct Connect4Adapter<'a> {
+pub struct Connect4Adapter<'a> {
     game_id: GameId,
     players: Vec<String>,
     state: State,
