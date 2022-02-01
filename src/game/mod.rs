@@ -111,7 +111,9 @@ impl GameManager {
     }
 
     pub fn receive_join(&mut self, game_id: GameId, username: String) -> Result<SessionId> {
-        let game_adapter = self.get_game_adapter(game_id)?;
+        if !self.games.contains_key(&game_id) {
+            return Err(actix_web::Error::from(GameManagerError::GameIdDoesNotExist(game_id)))
+        }
 
         let mut session_id;
         loop {
@@ -124,7 +126,9 @@ impl GameManager {
         let session = Session::new(username.clone(), game_id);
         self.sessions.insert(session_id, session);
 
-        let mut game_adapter = game_adapter.lock().unwrap().deref_mut();
+        let game_adapter_mutex = self.get_game_adapter(game_id)?;
+        let mut mutex_guard = game_adapter_mutex.lock().unwrap();
+        let mut game_adapter = mutex_guard.deref_mut();
         game_adapter.add_player(username);
 
         Ok(session_id)
