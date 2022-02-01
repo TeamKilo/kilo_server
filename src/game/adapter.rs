@@ -30,7 +30,7 @@ impl ResponseError for GameAdapterError {
     }
 }
 
-#[derive(Serialize, Copy, Clone)]
+#[derive(Serialize, Debug, Copy, Clone, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum State {
     Waiting,
