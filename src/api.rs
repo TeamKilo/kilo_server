@@ -17,12 +17,12 @@ pub(crate) async fn join_game(mut payload: Payload) -> impl Responder {
     todo!(); "not yet implemented"
 }
 
-#[get("/api/{game-id}/get-state")]
+#[get("/api/{game_id}/get-state")]
 pub(crate) async fn get_state(mut payload: Payload) -> impl Responder {
     todo!(); "not yet implemented"
 }
 
-#[post("/api/{game-id}/submit-move")]
+#[post("/api/{game_id}/submit-move")]
 pub(crate) async fn submit_move(mut payload: Payload) -> impl Responder {
     todo!(); "not yet implemented"
 }
