@@ -1,9 +1,13 @@
+mod adapter;
+
+use adapter::GameAdapter;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use actix_web::Result;
+use serde::{Serialize, Deserialize};
 
-#[derive(Copy, Clone)] pub struct GameId(u128);
-#[derive(Copy, Clone)] pub struct SessionId(u128);
+#[derive(Copy, Clone, Serialize, Deserialize)] pub struct GameId(u128);
+#[derive(Copy, Clone, Serialize, Deserialize)] pub struct SessionId(u128);
 
 impl GameId {
     pub fn new() {
@@ -15,13 +19,6 @@ impl SessionId {
     pub fn new() {
         todo!()
     }
-}
-
-pub trait GameAdapter: Send {
-    fn new(game_id: GameId) -> Self where Self: Sized;
-    fn add_player(&mut self, session_id: SessionId) -> Result<()>;
-    fn play_move(&mut self, session_id: SessionId, encoded_move: &str) -> Result<()>;
-    fn get_encoded_state(&self) -> String;
 }
 
 pub struct GameManager {
