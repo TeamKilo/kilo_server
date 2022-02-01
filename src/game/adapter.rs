@@ -58,7 +58,7 @@ pub struct GenericGameState {
 
 #[derive(Deserialize)]
 pub struct GenericGameMove {
-    session_id: SessionId,
+    player: String,
     payload: Value,
 }
 
