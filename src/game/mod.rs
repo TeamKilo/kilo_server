@@ -10,8 +10,8 @@ use actix_web::{ResponseError, Result};
 use actix_web::http::StatusCode;
 use rand::Rng;
 
-#[derive(Copy, Clone, Serialize, PartialEq, Eq, Hash, Debug)] pub struct GameId(u128);
-#[derive(Copy, Clone, Serialize, PartialEq, Eq, Hash, Debug)] pub struct SessionId(u128);
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)] pub struct GameId(u128);
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)] pub struct SessionId(u128);
 
 impl GameId {
     pub fn new() -> Self {
