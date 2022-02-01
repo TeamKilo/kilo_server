@@ -10,7 +10,7 @@ struct Connect4Adapter<'a> {
     players: Vec<String>,
     state: State,
     next_move: &'a String,
-    game: Connect4<'a>;
+    game: Connect4<'a>
 }
 
 struct Connect4<'a> {
