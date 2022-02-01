@@ -10,6 +10,10 @@ struct Connect4Adapter<'a> {
     players: Vec<String>,
     state: State,
     next_move: &'a String,
+    game: Connect4<'a>;
+}
+
+struct Connect4<'a> {
     board: Vec<Vec<&'a String>> // vector of columns, each variable length.
 }
 
@@ -20,7 +24,7 @@ impl GameAdapter for Connect4Adapter {
             players: vec![],
             state: State::Waiting,
             next_move: "".parse().unwrap(),
-            board: vec![]
+            game: Connect4 { board: vec![] }
         }
     }
 
@@ -46,7 +50,11 @@ impl GameAdapter for Connect4Adapter {
             players: self.players.clone(),
             state: self.state,
             can_move: vec![self.next_move.clone()],
-            payload: serde_json::to_value(&self.board)?
+            payload: serde_json::to_value(&self.game.board)?
         })
     }
+}
+
+impl Connect4 {
+
 }
