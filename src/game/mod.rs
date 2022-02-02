@@ -82,7 +82,7 @@ impl SessionId {
         let id: u128 = rng.gen();
         SessionId(id)
     }
-    // Added for API to create a GameId object to input to the GameManager
+    // Added for API to create a SessionId object
     pub fn from(id: u128) -> Self {
         SessionId(id)
     }
