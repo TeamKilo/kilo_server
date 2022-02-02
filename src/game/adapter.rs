@@ -1,25 +1,27 @@
-use serde_json::Value;
-use serde::{Serialize, Deserialize};
-use std::vec::Vec;
 use crate::game::{GameId, SessionId};
+use actix_web::http::StatusCode;
 use actix_web::{ResponseError, Result};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use actix_web::http::StatusCode;
+use std::vec::Vec;
 
 #[derive(Debug, Clone)]
 pub enum GameAdapterError {
     PlayerLimitExceeded(usize),
-    InvalidGameState(State)
+    InvalidGameState(State),
 }
 
 impl fmt::Display for GameAdapterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            GameAdapterError::PlayerLimitExceeded(size) =>
-                write!(f, "limit of {} players exceeded", size),
-            GameAdapterError::InvalidGameState(state) =>
+            GameAdapterError::PlayerLimitExceeded(size) => {
+                write!(f, "limit of {} players exceeded", size)
+            }
+            GameAdapterError::InvalidGameState(state) => {
                 write!(f, "invalid operation for state {}", state)
+            }
         }
     }
 }
@@ -43,7 +45,7 @@ impl Display for State {
         match self {
             State::Waiting => write!(f, "waiting"),
             State::InProgress => write!(f, "in_progress"),
-            State::Ended => write!(f, "ended")
+            State::Ended => write!(f, "ended"),
         }
     }
 }
@@ -63,7 +65,9 @@ pub struct GenericGameMove {
 }
 
 pub trait GameAdapter: Send {
-    fn new(game_id: GameId) -> Self where Self: Sized;
+    fn new(game_id: GameId) -> Self
+    where
+        Self: Sized;
     fn add_player(&mut self, username: String) -> Result<()>;
     fn play_move(&mut self, game_move: GenericGameMove) -> Result<()>;
     fn get_encoded_state(&self) -> Result<GenericGameState>;
