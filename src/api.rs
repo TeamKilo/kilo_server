@@ -1,17 +1,12 @@
 // API endpoints
 
 use crate::game::adapter::GameAdapter;
-use crate::game::{adapter, connect4, GameId, GameManager};
-use actix_web::http::StatusCode;
-use actix_web::web::Json;
-use actix_web::{get, post, web, Error, Responder, ResponseError, Result};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::fmt::{write, Display, Formatter};
-use std::ops::DerefMut;
-use std::process::id;
-use std::sync::RwLock;
 use crate::game::ValidationError::NoSuchGameError;
+use crate::game::{adapter, connect4, GameId, GameManager};
+use actix_web::web::Json;
+use actix_web::{get, post, web, Error, Result};
+use serde::{Deserialize, Serialize};
+use std::sync::RwLock;
 
 /* Helpers */
 
@@ -79,7 +74,7 @@ pub(crate) async fn create_game(
     };
     game_id.and_then(|id| {
         Ok(Json(CreateGameRes {
-            game_id: id.to_string()[4..].parse()?,
+            game_id: id.to_string(),
         }))
     })
 }
@@ -98,8 +93,12 @@ pub(crate) async fn join_game(
     let game_id = GameId::from(&payload.game_id)?;
     // Join a game
     let mut gm = gm_wrapped.write().unwrap();
-    let session_id = gm.receive_join(game_id, payload.username.clone());
-    todo!()
+    gm.receive_join(game_id, payload.username.clone())
+        .and_then(|session_id| {
+            Ok(Json(JoinGameRes {
+                session_id: session_id.to_string(),
+            }))
+        })
 }
 
 #[get("/api/{game_id}/get-state")]

@@ -2,18 +2,17 @@ pub mod adapter;
 pub mod connect4;
 
 use crate::game::adapter::{GenericGameMove, GenericGameState};
+use crate::game::ValidationError::ParseIdError;
 use actix_web::http::StatusCode;
 use actix_web::{Error, ResponseError, Result};
 use adapter::GameAdapter;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::DerefMut;
 use std::sync::Mutex;
-use std::str::FromStr;
 
 /// ValidationError
 #[derive(Debug, Clone)]
@@ -56,7 +55,10 @@ impl GameId {
 
     /// validate_id
     fn validate_id(game_id: &String) -> Result<u128, Error> {
-        let game_id_int = u128::from_str(&game_id);
+        if !game_id.starts_with("game_") {
+            return Err(actix_web::Error::from(ParseIdError(game_id.clone())));
+        }
+        let game_id_int = u128::from_str_radix(&game_id[5..], 10);
         match game_id_int {
             Ok(value) => Ok(value),
             Err(_) => {
@@ -70,7 +72,7 @@ impl GameId {
 
 impl fmt::Display for GameId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Game{}", self.0)
+        write!(f, "game_{}", self.0)
     }
 }
 
@@ -84,11 +86,27 @@ impl SessionId {
     pub fn from(id: u128) -> Self {
         SessionId(id)
     }
+
+    /// validate_id
+    fn validate_id(session_id: &String) -> Result<u128, Error> {
+        if !session_id.starts_with("session_") {
+            return Err(actix_web::Error::from(ParseIdError(session_id.clone())));
+        }
+        let session_id_int = u128::from_str_radix(&session_id[8..], 10);
+        match session_id_int {
+            Ok(value) => Ok(value),
+            Err(_) => {
+                return Err(actix_web::Error::from(ValidationError::ParseIdError(
+                    session_id.clone(),
+                )))
+            } // TODO: need custom error
+        }
+    }
 }
 
 impl fmt::Display for SessionId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Session{}", self.0)
+        write!(f, "session_{}", self.0)
     }
 }
 
