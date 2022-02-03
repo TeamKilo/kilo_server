@@ -11,6 +11,7 @@ const NUM_PLAYERS: usize = 2;
 const ROW_SIZE: usize = 6;
 const COL_SIZE: usize = 7;
 const CONNECT_FOUR: usize = 4;
+
 struct Connect4Adapter {
     game_id: GameId,
     players: Vec<String>,
