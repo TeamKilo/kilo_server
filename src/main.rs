@@ -5,15 +5,19 @@ use actix_web::{web, App, HttpRequest, HttpServer, Responder};
 use std::cell::RefCell;
 use std::env;
 use std::sync::RwLock;
+use actix_web::middleware::Logger;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
     let host = env::var("HOST").unwrap_or("127.0.0.1".to_string());
     let port = env::var("PORT").unwrap_or("8080".to_string());
 
     let game_manager = web::Data::new(game::GameManager::new());
     HttpServer::new(move || {
         App::new()
+            .wrap(Logger::default())
             .app_data(game_manager.clone())
             .service(api::create_game)
             .service(api::list_games)
