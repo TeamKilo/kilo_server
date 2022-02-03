@@ -1,18 +1,20 @@
 mod adapter;
 mod connect4;
 
+use actix_web::http::StatusCode;
+use actix_web::{ResponseError, Result};
 use adapter::GameAdapter;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Formatter;
 use std::sync::Mutex;
-use serde::{Serialize, Deserialize};
-use actix_web::{ResponseError, Result};
-use actix_web::http::StatusCode;
-use rand::Rng;
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)] pub struct GameId(u128);
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)] pub struct SessionId(u128);
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
+pub struct GameId(u128);
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
+pub struct SessionId(u128);
 
 impl GameId {
     pub fn new() -> Self {
@@ -42,7 +44,8 @@ impl fmt::Display for SessionId {
     }
 }
 
-#[derive(Debug, Clone)] pub struct GameIdDoesNotExistError(GameId);
+#[derive(Debug, Clone)]
+pub struct GameIdDoesNotExistError(GameId);
 
 impl fmt::Display for GameIdDoesNotExistError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -63,10 +66,7 @@ pub struct Session {
 
 impl Session {
     pub fn new(username: String, game_id: GameId) -> Self {
-        Session {
-            username,
-            game_id
-        }
+        Session { username, game_id }
     }
 }
 
@@ -77,10 +77,16 @@ pub struct GameManager {
 
 impl GameManager {
     pub fn new() -> Self {
-        GameManager { games: HashMap::new(), sessions: HashMap::new() }
+        GameManager {
+            games: HashMap::new(),
+            sessions: HashMap::new(),
+        }
     }
 
-    pub fn create_game(&mut self, game: impl FnOnce(GameId) -> Box<dyn GameAdapter>) -> Result<GameId> {
+    pub fn create_game(
+        &mut self,
+        game: impl FnOnce(GameId) -> Box<dyn GameAdapter>,
+    ) -> Result<GameId> {
         let mut game_id;
         loop {
             game_id = GameId::new();
@@ -122,7 +128,7 @@ impl GameManager {
     fn get_game_adapter(&self, game_id: GameId) -> Result<&Mutex<Box<dyn GameAdapter>>> {
         match self.games.get(&game_id) {
             Some(x) => Ok(x),
-            None => Err(actix_web::Error::from(GameIdDoesNotExistError(game_id)))
+            None => Err(actix_web::Error::from(GameIdDoesNotExistError(game_id))),
         }
     }
 }
