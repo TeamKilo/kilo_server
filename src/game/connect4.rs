@@ -6,7 +6,6 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::vec;
 use std::vec::Vec;
-
 const NUM_PLAYERS: usize = 2;
 const ROW_SIZE: usize = 6;
 const COL_SIZE: usize = 7;
