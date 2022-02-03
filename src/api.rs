@@ -6,8 +6,8 @@ use crate::game::{adapter, connect4, GameId, GameManager, SessionId};
 use actix_web::web::Json;
 use actix_web::{get, post, web, Error, Result};
 use serde::{Deserialize, Serialize};
-use std::sync::RwLock;
 use serde_json::Value;
+use std::sync::RwLock;
 
 /* Helpers */
 
@@ -52,7 +52,7 @@ pub struct JoinGameRes {
 #[derive(serde::Deserialize)]
 pub struct SubmitMoveReq {
     session_id: String,
-    payload: Value
+    payload: Value,
 }
 
 /// Struct for res from `/api/{game_id}/submit-move`

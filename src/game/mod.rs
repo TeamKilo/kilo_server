@@ -8,12 +8,12 @@ use actix_web::{Error, ResponseError, Result};
 use adapter::GameAdapter;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::DerefMut;
 use std::sync::Mutex;
-use serde_json::Value;
 
 /// ValidationError
 #[derive(Debug, Clone)]
@@ -207,12 +207,20 @@ impl GameManager {
     }
 
     pub fn receive_move(&self, session_id: SessionId, encoded_move: Value) -> Result<()> {
-        // Deleted sessionId because it corresponds to the "player" field in GenericGameMove
-        todo!()
+        let session = self.get_session(session_id)?;
+        let mut game_adapter = self.get_game_adapter(session.game_id)?.lock().unwrap();
+
+        game_adapter.play_move(GenericGameMove {
+            player: session.username.clone(),
+            payload: encoded_move,
+        })
     }
 
     pub fn get_state(&self, game_id: GameId) -> Result<GenericGameState> {
-        todo!()
+        self.get_game_adapter(game_id)?
+            .lock()
+            .unwrap()
+            .get_encoded_state()
     }
 
     fn get_game_adapter(&self, game_id: GameId) -> Result<&Mutex<Box<dyn GameAdapter>>> {
