@@ -13,6 +13,7 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::DerefMut;
 use std::sync::Mutex;
+use serde_json::Value;
 
 /// ValidationError
 #[derive(Debug, Clone)]
@@ -83,8 +84,8 @@ impl SessionId {
         SessionId(id)
     }
     // Added for API to create a SessionId object
-    pub fn from(id: u128) -> Self {
-        SessionId(id)
+    pub fn from(id: &String) -> Result<Self> {
+        SessionId::validate_id(id).and_then(|id| Ok(Self(id)))
     }
 
     /// validate_id
@@ -205,7 +206,7 @@ impl GameManager {
         Ok(session_id)
     }
 
-    pub fn receive_move(&self, encoded_move: GenericGameMove) -> Result<()> {
+    pub fn receive_move(&self, session_id: SessionId, encoded_move: Value) -> Result<()> {
         // Deleted sessionId because it corresponds to the "player" field in GenericGameMove
         todo!()
     }
