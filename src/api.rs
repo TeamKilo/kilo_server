@@ -2,11 +2,12 @@
 
 use crate::game::adapter::GameAdapter;
 use crate::game::ValidationError::NoSuchGameError;
-use crate::game::{adapter, connect4, GameId, GameManager};
+use crate::game::{adapter, connect4, GameId, GameManager, SessionId};
 use actix_web::web::Json;
 use actix_web::{get, post, web, Error, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
+use serde_json::Value;
 
 /* Helpers */
 
@@ -48,6 +49,11 @@ pub struct JoinGameRes {
 
 // Struct for req to `/api/{game_id}/submit-move`
 // This is basically the game::adaptor::GenericGameMove struct
+#[derive(serde::Deserialize)]
+pub struct SubmitMoveReq {
+    session_id: String,
+    payload: Value
+}
 
 /// Struct for res from `/api/{game_id}/submit-move`
 #[derive(Serialize)]
@@ -116,14 +122,15 @@ pub(crate) async fn get_state(
 #[post("/api/{game_id}/submit-move")]
 pub(crate) async fn submit_move(
     web::Path((game_id)): web::Path<String>,
-    mut payload: web::Json<adapter::GenericGameMove>,
+    mut payload: web::Json<SubmitMoveReq>,
     gm_wrapped: web::Data<RwLock<GameManager>>,
 ) -> Result<Json<SubmitMoveRes>> {
     let game_id = GameId::from(&game_id)?;
+    let session_id = SessionId::from(&payload.session_id)?;
     // Submit that to game manager
     let mut gm = gm_wrapped.read().unwrap();
     // Return success or failure
-    gm.receive_move(payload.into_inner())
+    gm.receive_move(session_id, payload.payload.clone())
         .and_then(|()| Ok(Json(SubmitMoveRes { success: true })))
 }
 
