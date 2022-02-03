@@ -1,6 +1,7 @@
 use crate::game::adapter::{
     GameAdapter, GameAdapterError, GenericGameMove, GenericGameState, State,
 };
+
 use crate::game::{GameId, SessionId};
 use serde::Deserialize;
 use serde_json::Value;
