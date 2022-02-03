@@ -58,9 +58,11 @@ impl GameAdapter for Connect4Adapter<'_> {
 
     fn get_encoded_state(&self) -> actix_web::Result<GenericGameState> {
         Ok(GenericGameState {
+            game: "connect_4".to_string(),
             players: self.players.clone(),
             state: self.state,
             can_move: vec![self.next_move.clone()],
+            winners: vec![],
             payload: serde_json::to_value(&self.game.board)?,
         })
     }

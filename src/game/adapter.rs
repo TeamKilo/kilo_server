@@ -63,8 +63,8 @@ pub struct GenericGameState {
 
 #[derive(Deserialize)]
 pub struct GenericGameMove {
-    player: String,
-    payload: Value,
+    pub player: String,
+    pub payload: Value,
 }
 
 pub trait GameAdapter: Send {
