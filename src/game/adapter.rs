@@ -52,16 +52,18 @@ impl Display for State {
 
 #[derive(Serialize)]
 pub struct GenericGameState {
+    pub game: String,
     pub players: Vec<String>,
-    pub state: State,
     pub can_move: Vec<String>,
+    pub winners: Vec<String>,
+    pub state: State,
     pub payload: Value,
 }
 
 #[derive(Deserialize)]
 pub struct GenericGameMove {
-    player: String,
-    payload: Value,
+    pub player: String,
+    pub payload: Value,
 }
 
 pub trait GameAdapter: Send {
