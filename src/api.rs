@@ -25,12 +25,6 @@ pub struct CreateGameRes {
     game_id: String,
 }
 
-/// Struct for res from `/api/list-games`
-#[derive(serde::Serialize)]
-pub struct ListGamesRes {
-    // TODO
-}
-
 /// Struct for req to `/api/join-game`
 #[derive(Deserialize)]
 pub struct JoinGameReq {
@@ -44,11 +38,6 @@ pub struct JoinGameRes {
     session_id: String,
 }
 
-// Struct for res from `/api/{game_id}/get-state`
-// <br> It's basically the game::adaptor::GenericGameState Object
-
-// Struct for req to `/api/{game_id}/submit-move`
-// This is basically the game::adaptor::GenericGameMove struct
 #[derive(serde::Deserialize)]
 pub struct SubmitMoveReq {
     session_id: String,
@@ -85,8 +74,8 @@ pub(crate) async fn create_game(
 }
 
 #[get("/api/list-games")]
-pub(crate) async fn list_games() -> Result<Json<ListGamesRes>> {
-    todo!()
+pub(crate) async fn list_games(gm_wrapped: web::Data<GameManager>) -> Result<Json<Vec<String>>> {
+    Ok(Json(gm_wrapped.list_games()?))
 }
 
 #[post("/api/join-game")]
