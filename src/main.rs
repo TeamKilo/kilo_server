@@ -5,6 +5,7 @@ use actix_web::{web, App, HttpRequest, HttpServer, Responder};
 use std::cell::RefCell;
 use std::env;
 use std::sync::RwLock;
+use actix_cors::Cors;
 use actix_web::middleware::Logger;
 
 #[actix_web::main]
@@ -18,6 +19,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .wrap(Cors::permissive())
             .app_data(game_manager.clone())
             .service(api::create_game)
             .service(api::list_games)
