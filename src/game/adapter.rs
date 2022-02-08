@@ -16,9 +16,13 @@ pub enum GameAdapterError {
     PlayerLimitExceeded(usize),
     InvalidGameState(State),
 <<<<<<< HEAD
+<<<<<<< HEAD
     WrongPlayerRequest(String),
 =======
 >>>>>>> 44d9a50... Deserialized
+=======
+    WrongPlayerRequest(String),
+>>>>>>> d2e067a... Implemented testing (a bit)
 }
 
 impl fmt::Display for GameAdapterError {
@@ -30,12 +34,9 @@ impl fmt::Display for GameAdapterError {
             GameAdapterError::InvalidGameState(state) => {
                 write!(f, "invalid operation for state {}", state)
             }
-<<<<<<< HEAD
             GameAdapterError::WrongPlayerRequest(user) => {
                 write!(f, "invalid user turn for {}", user)
             }
-=======
->>>>>>> 44d9a50... Deserialized
         }
     }
 }
