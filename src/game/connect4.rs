@@ -19,7 +19,7 @@ struct Connect4Adapter {
     state: State,
     next_move: String,
     game: Connect4,
-    //winner: Vec<String>
+    winner: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -52,6 +52,7 @@ impl GameAdapter for Connect4Adapter {
                 turn: Token::Red,
                 board: vec![vec![]; COL_SIZE],
             },
+            winner: vec![],
         }
     }
 
@@ -75,10 +76,35 @@ impl GameAdapter for Connect4Adapter {
                 self.state,
             )));
         }
-        let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload)?; //serde_json::from_value(GenericGameMove);
+        let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload)?;
         let column = request_payload.column;
-        self.game.moves(column)?;
-        Ok(())
+        let mut player = match self.game.turn {
+            Token::Red => self.players.get(0).unwrap().clone(),
+            Token::Blue => self.players.get(1).unwrap().clone(),
+        };
+        let mut user = game_move.player;
+        if player == user {
+            self.game.moves(column)?;
+            let win = self.game.winning_move(column);
+            let draw = self.game.draw_move();
+            if win {
+                let mut winner = match self.game.turn {
+                    Token::Red => self.players.get(0).unwrap().clone(),
+                    Token::Blue => self.players.get(1).unwrap().clone(),
+                };
+                self.winner.push(winner);
+            }
+            if win || draw {
+                self.game.completed = true;
+            } else {
+                self.game.switch_token();
+            }
+            Ok(())
+        } else {
+            Err(actix_web::Error::from(
+                GameAdapterError::WrongPlayerRequest(user), // return the one who made the request
+            ))
+        }
     }
 
     fn get_encoded_state(&self) -> actix_web::Result<GenericGameState> {
@@ -115,12 +141,13 @@ impl Connect4 {
             return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(
                 State::InProgress,
             )));
-        } else if self.board.get(column).iter().len() >= ROW_SIZE {
+        } else if self.board.get(column).unwrap().len() >= ROW_SIZE {
             return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(
                 State::InProgress,
             )));
+        } else {
+            self.board.get_mut(column).unwrap().push(self.turn);
         }
-        self.board.get_mut(column - 1).unwrap().push(self.turn);
         Ok(())
     }
 
@@ -132,132 +159,133 @@ impl Connect4 {
     }
 
     fn winning_move(&mut self, column: usize) -> bool {
-        let row = self.board.get(column).iter().len() - 1;
-        // let player = self.turn;
-        let mut col_aux = column;
-        let mut row_aux = row;
-        let mut lenl = 0;
-        let mut lenr = 0;
-        let mut ok = true;
+        if (column < COL_SIZE) {
+            let row = self.board.get(column).unwrap().len() - 1;
+            // let player = self.turn;
+            let mut col_aux = column;
+            let mut row_aux = row;
+            let mut lenl = 0;
+            let mut lenr = 0;
+            let mut ok = true;
 
-        //1.) Down
-        while (lenl < CONNECT_FOUR) && ok && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if row_aux > 0 {
-                row_aux -= 1;
-            } else {
-                ok = false;
+            //1.) Down
+            while (lenl < CONNECT_FOUR)
+                && ok
+                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
+            {
+                lenl += 1;
+                if row_aux > 0 {
+                    row_aux -= 1;
+                } else {
+                    ok = false;
+                }
             }
-        }
-        if lenl >= CONNECT_FOUR {
-            return true;
-        }
+            if lenl >= CONNECT_FOUR {
+                return true;
+            }
 
-        //2.) Left + Right
-        lenl = 0;
-        row_aux = row;
-        col_aux = column;
-        ok = true;
-        while (lenl < CONNECT_FOUR)
-            && (ok)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if col_aux > 0 {
-                col_aux -= 1;
-            } else {
-                ok = false;
+            //2.) Left + Right
+            lenl = 0;
+            row_aux = row;
+            col_aux = column;
+            ok = true;
+            while (lenl < CONNECT_FOUR)
+                && (ok)
+                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
+            {
+                lenl += 1;
+                if col_aux > 0 {
+                    col_aux -= 1;
+                } else {
+                    ok = false;
+                }
             }
-        }
-        while (lenr < CONNECT_FOUR)
-            && (col_aux < COL_SIZE)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            col_aux += 1;
-        }
-        if lenl + lenr >= CONNECT_FOUR {
-            return true;
-        }
+            while (lenr < CONNECT_FOUR)
+                && (col_aux < COL_SIZE)
+                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
+            {
+                lenl += 1;
+                col_aux += 1;
+            }
+            if lenl + lenr >= CONNECT_FOUR {
+                return true;
+            }
 
-        //3.) LeftUp + RightDown
-        lenl = 0;
-        lenr = 0;
-        row_aux = row;
-        col_aux = column;
-        ok = true;
-        while (lenl < CONNECT_FOUR)
-            && (ok)
-            && (row_aux < ROW_SIZE)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if col_aux > 0 {
-                col_aux -= 1;
-            } else {
-                ok = false;
+            //3.) LeftUp + RightDown
+            lenl = 0;
+            lenr = 0;
+            row_aux = row;
+            col_aux = column;
+            ok = true;
+            while (lenl < CONNECT_FOUR)
+                && (ok)
+                && (row_aux < ROW_SIZE)
+                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
+            {
+                lenl += 1;
+                if col_aux > 0 {
+                    col_aux -= 1;
+                } else {
+                    ok = false;
+                }
+                row_aux += 1;
             }
-            row_aux += 1;
-        }
-        ok = true;
-        while (lenr < CONNECT_FOUR)
-            && (col_aux < COL_SIZE)
-            && (ok)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if row_aux > 0 {
-                row_aux -= 1;
-            } else {
-                ok = false;
+            ok = true;
+            while (lenr < CONNECT_FOUR)
+                && (col_aux < COL_SIZE)
+                && (ok)
+                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
+            {
+                lenl += 1;
+                if row_aux > 0 {
+                    row_aux -= 1;
+                } else {
+                    ok = false;
+                }
+                col_aux += 1;
             }
-            col_aux += 1;
-        }
-        if lenl + lenr >= CONNECT_FOUR {
-            return true;
-        }
+            if lenl + lenr >= CONNECT_FOUR {
+                return true;
+            }
 
-        //4.) LeftDomn + RightUp
-        lenl = 0;
-        lenr = 0;
-        row_aux = row;
-        col_aux = column;
-        ok = true;
-        while (lenl < CONNECT_FOUR)
-            && (ok)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if row_aux > 0 {
-                row_aux -= 1;
-            } else {
-                ok = false;
+            //4.) LeftDomn + RightUp
+            lenl = 0;
+            lenr = 0;
+            row_aux = row;
+            col_aux = column;
+            ok = true;
+            while (lenl < CONNECT_FOUR)
+                && (ok)
+                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
+            {
+                lenl += 1;
+                if row_aux > 0 {
+                    row_aux -= 1;
+                } else {
+                    ok = false;
+                }
+                if col_aux > 0 {
+                    col_aux -= 1;
+                } else {
+                    ok = false;
+                }
             }
-            if col_aux > 0 {
-                col_aux -= 1;
-            } else {
-                ok = false;
+            while (lenr < CONNECT_FOUR)
+                && (col_aux < COL_SIZE)
+                && (row_aux < ROW_SIZE)
+                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
+            {
+                lenl += 1;
+                col_aux += 1;
+                row_aux += 1;
             }
+            lenl + lenr >= CONNECT_FOUR
+        } else {
+            false
         }
-        while (lenr < CONNECT_FOUR)
-            && (col_aux < COL_SIZE)
-            && (row_aux < ROW_SIZE)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            col_aux += 1;
-            row_aux += 1;
-        }
-        if lenl + lenr >= CONNECT_FOUR {
-            return true;
-        }
-
-        false
     }
     fn draw_move(&self) -> bool {
-        let full_table = self.board.iter().all(|ref col| col.len() == ROW_SIZE);
-        return full_table;
+        self.board.iter().all(|ref col| col.len() == ROW_SIZE)
     }
 
     fn moves(&mut self, column: usize) -> actix_web::Result<()> {
@@ -267,13 +295,60 @@ impl Connect4 {
             )));
         }
         self.insert_move_if_legal(column)?;
+        Ok(())
+    }
+    fn visualize(&mut self, column: usize) {
+        let mut ct = 0;
+        let mut tok_turn = "";
+
+        if self.turn == Token::Red {
+            tok_turn = "Red";
+        }
+        if self.turn == Token::Blue {
+            tok_turn = "Blue";
+        }
+        println!("Adding on column {}: on token {}", column, tok_turn);
+        self.insert_move_if_legal(column);
+        println!("Board after inserting:");
+        self.board.iter().for_each(|it| {
+            println!("Col {}, {:#?}", ct, it);
+            ct += 1;
+        });
         let win = self.winning_move(column);
         let draw = self.draw_move();
+        println!("Win:{}, Draw:{}", win, draw);
+
         if win || draw {
             self.completed = true;
         } else {
             self.switch_token();
         }
-        Ok(())
+        println!("Completed: {};", self.completed);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::game::connect4::Connect4;
+    use crate::game::connect4::Token;
+    use crate::game::connect4::COL_SIZE;
+    #[test]
+
+    fn add_() {
+        let mut board1 = Connect4 {
+            completed: false,
+            turn: Token::Red,
+            board: vec![vec![]; COL_SIZE], // vector of columns, each variable length.
+        };
+        board1.visualize(8);
+        board1.visualize(2);
+        board1.visualize(2);
+        board1.visualize(2);
+        board1.visualize(2);
+        board1.visualize(2);
+        board1.visualize(2);
+
+        assert_eq!(2 + 2, 4);
     }
 }

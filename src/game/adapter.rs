@@ -12,6 +12,7 @@ use tokio::sync::broadcast;
 pub enum GameAdapterError {
     PlayerLimitExceeded(usize),
     InvalidGameState(State),
+    WrongPlayerRequest(String),
 }
 
 impl fmt::Display for GameAdapterError {
@@ -22,6 +23,9 @@ impl fmt::Display for GameAdapterError {
             }
             GameAdapterError::InvalidGameState(state) => {
                 write!(f, "invalid operation for state {}", state)
+            }
+            GameAdapterError::WrongPlayerRequest(string) => {
+                write!(f, " not this user's turn, user: {}", string)
             }
         }
     }
