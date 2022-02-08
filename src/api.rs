@@ -123,8 +123,11 @@ pub(crate) async fn submit_move(
 }
 
 #[get("/api/{game_id}/wait-for-update")]
-pub(crate) async fn wait_for_move(
+pub(crate) async fn wait_for_update(
     web::Path((game_id)): web::Path<String>,
+    gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<WaitForUpdateRes>> {
-    todo!()
+    let game_id = GameId::from(&game_id)?;
+    gm_wrapped.wait_for_update(game_id)?.recv().await;
+    Ok(Json(WaitForUpdateRes { updated: true }))
 }
