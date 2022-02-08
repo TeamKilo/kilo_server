@@ -1,12 +1,12 @@
 mod api;
 mod game;
 
+use actix_cors::Cors;
+use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpRequest, HttpServer, Responder};
 use std::cell::RefCell;
 use std::env;
 use std::sync::RwLock;
-use actix_cors::Cors;
-use actix_web::middleware::Logger;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

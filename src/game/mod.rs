@@ -211,6 +211,14 @@ impl GameManager {
             .get_encoded_state()
     }
 
+    pub fn list_games(&self) -> Result<Vec<String>> {
+        let mut games: Vec<String> = vec![];
+        for x in self.games.iter() {
+            games.push(x.key().to_string());
+        }
+        Ok(games)
+    }
+
     fn get_game_adapter_mutex<'a>(
         games: &DashMap<GameId, GameAdapterMutex>,
         game_id: GameId,
