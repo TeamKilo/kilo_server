@@ -6,6 +6,7 @@ use serde_json::Value;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::vec::Vec;
+use tokio::sync::broadcast;
 
 #[derive(Debug, Clone)]
 pub enum GameAdapterError {
@@ -70,6 +71,7 @@ pub trait GameAdapter: Send {
     fn new(game_id: GameId) -> Self
     where
         Self: Sized;
+    fn get_notifier(&self) -> &broadcast::Sender<()>;
     fn add_player(&mut self, username: String) -> Result<()>;
     fn has_player(&self, username: &str) -> bool;
     fn play_move(&mut self, game_move: GenericGameMove) -> Result<()>;
