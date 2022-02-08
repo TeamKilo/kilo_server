@@ -26,7 +26,7 @@ async fn main() -> std::io::Result<()> {
             .service(api::join_game)
             .service(api::get_state)
             .service(api::submit_move)
-            .service(api::wait_for_move)
+            .service(api::wait_for_update)
     })
     .bind(format!("{}:{}", host, port))?
     .run()

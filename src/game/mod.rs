@@ -16,6 +16,7 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::DerefMut;
 use std::sync::Mutex;
+use tokio::sync::broadcast;
 
 /// ValidationError
 #[derive(Debug, Clone)]
@@ -232,6 +233,14 @@ impl GameManager {
             games.push(x.key().to_string());
         }
         Ok(games)
+    }
+
+    pub fn wait_for_update(&self, game_id: GameId) -> Result<broadcast::Receiver<()>> {
+        Ok(GameManager::get_game_adapter_mutex(&self.games, game_id)?
+            .lock()
+            .unwrap()
+            .get_notifier()
+            .subscribe())
     }
 
     fn get_game_adapter_mutex<'a>(

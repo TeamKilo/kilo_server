@@ -4,6 +4,8 @@ use crate::game::adapter::{
 use crate::game::{GameId, SessionId};
 use std::vec;
 use std::vec::Vec;
+use tokio::sync::broadcast;
+use tokio::sync::broadcast::Sender;
 
 const NUM_PLAYERS: usize = 2;
 
@@ -12,6 +14,7 @@ pub struct Connect4Adapter<'a> {
     players: Vec<String>,
     state: State,
     next_move: String,
+    notifier: broadcast::Sender<()>,
     game: Connect4<'a>,
 }
 
@@ -29,8 +32,13 @@ impl GameAdapter for Connect4Adapter<'_> {
             players: vec![],
             state: State::Waiting,
             next_move: "".parse().unwrap(),
+            notifier: broadcast::channel(16).0,
             game: Connect4 { board: vec![] },
         }
+    }
+
+    fn get_notifier(&self) -> &Sender<()> {
+        &self.notifier
     }
 
     fn add_player(&mut self, username: String) -> actix_web::Result<()> {
@@ -39,6 +47,7 @@ impl GameAdapter for Connect4Adapter<'_> {
             if self.players.len() == NUM_PLAYERS {
                 self.state = State::InProgress
             }
+            self.notifier.send(());
             Ok(())
         } else {
             Err(actix_web::Error::from(
