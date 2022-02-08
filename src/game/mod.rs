@@ -117,16 +117,24 @@ impl fmt::Display for SessionId {
 pub enum GameManagerError {
     GameIdDoesNotExist(GameId),
     SessionIdDoesNotExist(SessionId),
+    DuplicateUsername { username: String, game_id: GameId },
 }
 
 impl fmt::Display for GameManagerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             GameManagerError::GameIdDoesNotExist(game_id) => {
-                write!(f, "game corresponding to {} does not exist", game_id)
+                write!(f, "Game corresponding to {} does not exist", game_id)
             }
             GameManagerError::SessionIdDoesNotExist(session_id) => {
-                write!(f, "session corresponding to {} does not exist", session_id)
+                write!(f, "Session corresponding to {} does not exist", session_id)
+            }
+            GameManagerError::DuplicateUsername { username, game_id } => {
+                write!(
+                    f,
+                    "Player with username {} already in game corresponding to {}",
+                    username, game_id
+                )
             }
         }
     }
@@ -137,6 +145,7 @@ impl ResponseError for GameManagerError {
         match self {
             GameManagerError::GameIdDoesNotExist(_) => StatusCode::NOT_FOUND,
             GameManagerError::SessionIdDoesNotExist(_) => StatusCode::NOT_FOUND,
+            GameManagerError::DuplicateUsername { .. } => StatusCode::CONFLICT,
         }
     }
 }
@@ -181,6 +190,12 @@ impl GameManager {
         let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
         let mut mutex_guard = game_adapter_mutex.lock().unwrap();
         let game_adapter = mutex_guard.deref_mut();
+        if game_adapter.has_player(&username) {
+            return Err(actix_web::Error::from(
+                GameManagerError::DuplicateUsername { username, game_id },
+            ));
+        }
+
         game_adapter.add_player(username.clone())?;
 
         loop {

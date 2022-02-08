@@ -71,6 +71,7 @@ pub trait GameAdapter: Send {
     where
         Self: Sized;
     fn add_player(&mut self, username: String) -> Result<()>;
+    fn has_player(&self, username: &str) -> bool;
     fn play_move(&mut self, game_move: GenericGameMove) -> Result<()>;
     fn get_encoded_state(&self) -> Result<GenericGameState>;
 }

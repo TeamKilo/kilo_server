@@ -47,6 +47,10 @@ impl GameAdapter for Connect4Adapter<'_> {
         }
     }
 
+    fn has_player(&self, username: &str) -> bool {
+        self.players.iter().any(|s| s.eq(username))
+    }
+
     fn play_move(&mut self, game_move: GenericGameMove) -> actix_web::Result<()> {
         if self.state != State::InProgress {
             return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(
