@@ -1,9 +1,10 @@
 use crate::game::adapter::{
     GameAdapter, GameAdapterError, GenericGameMove, GenericGameState, State,
 };
-
 use crate::game::{GameId, SessionId};
 
+use actix_web::client::SendRequestError;
+use actix_web::client::WsClientError::SendRequest;
 use serde::Deserialize;
 use serde_json::Value;
 use std::vec;

@@ -6,23 +6,13 @@ use serde_json::Value;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::vec::Vec;
-<<<<<<< HEAD
 use tokio::sync::broadcast;
-=======
->>>>>>> 44d9a50... Deserialized
 
 #[derive(Debug, Clone)]
 pub enum GameAdapterError {
     PlayerLimitExceeded(usize),
     InvalidGameState(State),
-<<<<<<< HEAD
-<<<<<<< HEAD
     WrongPlayerRequest(String),
-=======
->>>>>>> 44d9a50... Deserialized
-=======
-    WrongPlayerRequest(String),
->>>>>>> d2e067a... Implemented testing (a bit)
 }
 
 impl fmt::Display for GameAdapterError {
@@ -85,10 +75,7 @@ pub trait GameAdapter: Send {
     fn new(game_id: GameId) -> Self
     where
         Self: Sized;
-<<<<<<< HEAD
     fn get_notifier(&self) -> &broadcast::Sender<()>;
-=======
->>>>>>> 44d9a50... Deserialized
     fn add_player(&mut self, username: String) -> Result<()>;
     fn has_player(&self, username: &str) -> bool;
     fn play_move(&mut self, game_move: GenericGameMove) -> Result<()>;

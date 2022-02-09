@@ -1,7 +1,6 @@
 pub mod adapter;
 pub mod connect4;
 
-<<<<<<< HEAD
 use crate::game::adapter::{GenericGameMove, GenericGameState};
 use crate::game::ValidationError::ParseIdError;
 use actix_web::http::StatusCode;
@@ -10,22 +9,15 @@ use adapter::GameAdapter;
 use dashmap::mapref::entry::Entry;
 use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
+use game::adapter::GameAdapter;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-=======
-use actix_web::http::StatusCode;
-use actix_web::{ResponseError, Result};
-use adapter::GameAdapter;
-use rand::Rng;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
->>>>>>> 44d9a50... Deserialized
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::DerefMut;
 use std::sync::Mutex;
-<<<<<<< HEAD
 use tokio::sync::broadcast;
 
 /// ValidationError
@@ -53,11 +45,6 @@ impl ResponseError for ValidationError {
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
 pub struct GameId(u128);
 
-=======
-
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
-pub struct GameId(u128);
->>>>>>> 44d9a50... Deserialized
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
 pub struct SessionId(u128);
 
@@ -130,15 +117,11 @@ impl fmt::Display for SessionId {
 }
 
 #[derive(Debug, Clone)]
-<<<<<<< HEAD
 pub enum GameManagerError {
     GameIdDoesNotExist(GameId),
     SessionIdDoesNotExist(SessionId),
     DuplicateUsername { username: String, game_id: GameId },
 }
-=======
-pub struct GameIdDoesNotExistError(GameId);
->>>>>>> 44d9a50... Deserialized
 
 impl fmt::Display for GameManagerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -191,25 +174,14 @@ pub struct GameManager {
 impl GameManager {
     pub fn new() -> Self {
         GameManager {
-<<<<<<< HEAD
             games: DashMap::new(),
             sessions: DashMap::new(),
         }
     }
-
-    pub fn create_game(&self, game: impl FnOnce(GameId) -> Box<dyn GameAdapter>) -> Result<GameId> {
-=======
-            games: HashMap::new(),
-            sessions: HashMap::new(),
-        }
-    }
-
     pub fn create_game(
         &mut self,
         game: impl FnOnce(GameId) -> Box<dyn GameAdapter>,
     ) -> Result<GameId> {
-        let mut game_id;
->>>>>>> 44d9a50... Deserialized
         loop {
             let game_id = GameId::new();
             if let entry @ Entry::Vacant(_) = self.games.entry(game_id) {
@@ -293,13 +265,9 @@ impl GameManager {
     ) -> Result<Ref<SessionId, Session>> {
         match sessions.get(&session_id) {
             Some(x) => Ok(x),
-<<<<<<< HEAD
             None => Err(actix_web::Error::from(
                 GameManagerError::SessionIdDoesNotExist(session_id),
             )),
-=======
-            None => Err(actix_web::Error::from(GameIdDoesNotExistError(game_id))),
->>>>>>> 44d9a50... Deserialized
         }
     }
 }

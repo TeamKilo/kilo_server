@@ -2,6 +2,8 @@ extern crate tokio;
 extern crate actix_web;
 extern crate serde_json;
 extern crate actix_cors;
+extern crate rand;
+extern crate dashmap;
 
 mod api;
 mod game;
