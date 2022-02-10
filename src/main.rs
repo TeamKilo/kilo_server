@@ -28,7 +28,7 @@ async fn main() -> std::io::Result<()> {
             .service(api::submit_move)
             .service(api::wait_for_update)
     })
-        .bind(format!("{}:{}", host, port))?
-        .run()
-        .await
+    .bind(format!("{}:{}", host, port))?
+    .run()
+    .await
 }
