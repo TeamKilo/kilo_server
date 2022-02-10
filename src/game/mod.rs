@@ -10,6 +10,7 @@ use dashmap::mapref::entry::Entry;
 use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
 use rand::Rng;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
@@ -241,6 +242,24 @@ impl GameManager {
             .unwrap()
             .get_notifier()
             .subscribe())
+    }
+
+    pub fn delete_game(&self, game_id: GameId) -> Result<()> {
+        match self.games.remove(&game_id) {
+            Some(_) => (),
+            None => {
+                return Err(actix_web::Error::from(
+                    GameManagerError::GameIdDoesNotExist(game_id),
+                ))
+            }
+        };
+
+        self.sessions.par_iter().for_each(|pair| {
+            self.sessions
+                .remove_if(pair.key(), |_, session| session.game_id == game_id);
+        });
+
+        Ok(())
     }
 
     fn get_game_adapter_mutex<'a>(
