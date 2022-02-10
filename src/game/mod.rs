@@ -118,7 +118,14 @@ impl fmt::Display for SessionId {
 pub enum GameManagerError {
     GameIdDoesNotExist(GameId),
     SessionIdDoesNotExist(SessionId),
-    DuplicateUsername { username: String, game_id: GameId },
+    DuplicateUsername {
+        username: String,
+        game_id: GameId,
+    },
+    GameIdDoesNotMatch {
+        game_id: GameId,
+        session_id: SessionId,
+    },
 }
 
 impl fmt::Display for GameManagerError {
@@ -137,6 +144,16 @@ impl fmt::Display for GameManagerError {
                     username, game_id
                 )
             }
+            GameManagerError::GameIdDoesNotMatch {
+                game_id,
+                session_id,
+            } => {
+                write!(
+                    f,
+                    "Session corresponding to {} does not belong to game corresponding to {}",
+                    session_id, game_id
+                )
+            }
         }
     }
 }
@@ -147,6 +164,7 @@ impl ResponseError for GameManagerError {
             GameManagerError::GameIdDoesNotExist(_) => StatusCode::NOT_FOUND,
             GameManagerError::SessionIdDoesNotExist(_) => StatusCode::NOT_FOUND,
             GameManagerError::DuplicateUsername { .. } => StatusCode::CONFLICT,
+            GameManagerError::GameIdDoesNotMatch { .. } => StatusCode::BAD_REQUEST,
         }
     }
 }
@@ -215,9 +233,17 @@ impl GameManager {
         session_id: SessionId,
         encoded_move: Value,
     ) -> Result<()> {
-        GameManager::get_game_adapter_mutex(&self.games, game_id)?;
         let session = GameManager::get_session(&self.sessions, session_id)?;
-        let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, session.game_id)?;
+        if session.game_id != game_id {
+            return Err(actix_web::Error::from(
+                GameManagerError::GameIdDoesNotMatch {
+                    game_id,
+                    session_id,
+                },
+            ));
+        }
+
+        let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
         let mut game_adapter = game_adapter_mutex.lock().unwrap();
 
         game_adapter.play_move(GenericGameMove {
