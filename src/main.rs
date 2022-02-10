@@ -1,19 +1,10 @@
-extern crate tokio;
-extern crate actix_web;
-extern crate serde_json;
-extern crate actix_cors;
-extern crate rand;
-extern crate dashmap;
-
 mod api;
 mod game;
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpRequest, HttpServer, Responder};
-use std::cell::RefCell;
+use actix_web::{web, App, HttpServer};
 use std::env;
-use std::sync::RwLock;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

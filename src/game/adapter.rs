@@ -1,4 +1,4 @@
-use crate::game::{GameId, SessionId};
+use crate::game::GameId;
 use actix_web::http::StatusCode;
 use actix_web::{ResponseError, Result};
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,7 @@ pub enum GameAdapterError {
     PlayerLimitExceeded(usize),
     InvalidGameState(State),
     WrongPlayerRequest(String),
+    WrongMoveRequest(usize),
 }
 
 impl fmt::Display for GameAdapterError {
@@ -26,6 +27,13 @@ impl fmt::Display for GameAdapterError {
             }
             GameAdapterError::WrongPlayerRequest(user) => {
                 write!(f, "invalid user turn for {}", user)
+            }
+            GameAdapterError::WrongMoveRequest(column) => {
+                write!(
+                    f,
+                    "invalid move, column {} is  either full or non-existent",
+                    column
+                )
             }
         }
     }
