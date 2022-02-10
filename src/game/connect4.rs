@@ -70,7 +70,11 @@ impl GameAdapter for Connect4Adapter {
                 GameAdapterError::PlayerLimitExceeded(NUM_PLAYERS),
             ));
         }
+
         self.players.push(username);
+        if self.players.len() == NUM_PLAYERS {
+            self.state = State::InProgress;
+        }
         self.notifier.send(());
         Ok(())
     }
