@@ -67,7 +67,7 @@ impl Display for State {
 pub struct GenericGameState {
     pub game: String,
     pub players: Vec<String>,
-    pub can_move: Vec<String>,
+    //pub can_move: Vec<String>,
     pub winners: Vec<String>,
     pub state: State,
     pub payload: Value,

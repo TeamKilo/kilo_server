@@ -17,7 +17,6 @@ pub struct Connect4Adapter {
     game_id: GameId,
     players: Vec<String>,
     state: State,
-    next_move: String,
     notifier: broadcast::Sender<()>,
     game: Connect4,
     winner: Vec<String>,
@@ -46,7 +45,6 @@ impl GameAdapter for Connect4Adapter {
             game_id,
             players: vec![],
             state: State::Waiting,
-            next_move: "".parse().unwrap(),
             notifier: broadcast::channel(16).0,
             game: Connect4 {
                 completed: false,
@@ -113,6 +111,7 @@ impl GameAdapter for Connect4Adapter {
         } else {
             self.game.switch_token();
         }
+        self.notifier.send(());
         Ok(())
     }
 
@@ -134,7 +133,7 @@ impl GameAdapter for Connect4Adapter {
             game: "connect_4".to_string(),
             players: self.players.clone(),
             state: self.state,
-            can_move: vec![self.next_move.clone()],
+            //  can_move: vec![self.next_move.clone()],
             winners: vec![],
             payload: serde_json::to_value(&encoded_board)?,
         })
