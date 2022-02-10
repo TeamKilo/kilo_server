@@ -1,13 +1,12 @@
-extern crate tokio;
-extern crate serde_json;
-
 mod api;
 mod game;
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpServer};
+use actix_web::{web, App, HttpRequest, HttpServer, Responder};
+use std::cell::RefCell;
 use std::env;
+use std::sync::RwLock;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -17,7 +16,6 @@ async fn main() -> std::io::Result<()> {
     let port = env::var("PORT").unwrap_or("8080".to_string());
 
     let game_manager = web::Data::new(game::GameManager::new());
-
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -29,9 +27,8 @@ async fn main() -> std::io::Result<()> {
             .service(api::get_state)
             .service(api::submit_move)
             .service(api::wait_for_update)
-
     })
-    .bind(format!("{}:{}", host, port))?
-    .run()
-    .await
+        .bind(format!("{}:{}", host, port))?
+        .run()
+        .await
 }
