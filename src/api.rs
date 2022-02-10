@@ -28,7 +28,6 @@ pub struct CreateGameRes {
 /// Struct for req to `/api/join-game`
 #[derive(Deserialize)]
 pub struct JoinGameReq {
-    game_id: String,
     username: String,
 }
 
@@ -58,7 +57,7 @@ pub struct WaitForUpdateRes {
 
 #[post("/api/create-game")]
 pub(crate) async fn create_game(
-    mut payload: web::Json<CreateGameReq>,
+    payload: web::Json<CreateGameReq>,
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<CreateGameRes>> {
     // Validate & Pass it on
@@ -78,13 +77,14 @@ pub(crate) async fn list_games(gm_wrapped: web::Data<GameManager>) -> Result<Jso
     Ok(Json(gm_wrapped.list_games()?))
 }
 
-#[post("/api/join-game")]
+#[post("/api/{game_id}/join-game")]
 pub(crate) async fn join_game(
-    mut payload: web::Json<JoinGameReq>,
+    web::Path(game_id): web::Path<String>,
+    payload: web::Json<JoinGameReq>,
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<JoinGameRes>> {
-    // Validate input
-    let game_id = GameId::from(&payload.game_id)?;
+    // Validation
+    let game_id = GameId::from(&game_id)?;
     // Join a game
     gm_wrapped
         .receive_join(game_id, payload.username.clone())
@@ -97,10 +97,10 @@ pub(crate) async fn join_game(
 
 #[get("/api/{game_id}/get-state")]
 pub(crate) async fn get_state(
-    web::Path((game_id)): web::Path<String>,
+    web::Path(game_id): web::Path<String>,
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<adapter::GenericGameState>> {
-    // Validation & get_state
+    // Validation
     let game_id = GameId::from(&game_id)?;
     // Get state and return
     Ok(Json(gm_wrapped.get_state(game_id)?))
@@ -108,23 +108,25 @@ pub(crate) async fn get_state(
 
 #[post("/api/{game_id}/submit-move")]
 pub(crate) async fn submit_move(
-    web::Path((game_id)): web::Path<String>,
-    mut payload: web::Json<SubmitMoveReq>,
+    web::Path(game_id): web::Path<String>,
+    payload: web::Json<SubmitMoveReq>,
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<SubmitMoveRes>> {
+    // Validation
     let game_id = GameId::from(&game_id)?;
     let session_id = SessionId::from(&payload.session_id)?;
+
     // Submit that to game manager
     // Return success or failure
 
     gm_wrapped
-        .receive_move(session_id, payload.payload.clone())
+        .receive_move(game_id, session_id, payload.payload.clone())
         .and_then(|()| Ok(Json(SubmitMoveRes { success: true })))
 }
 
 #[get("/api/{game_id}/wait-for-update")]
 pub(crate) async fn wait_for_update(
-    web::Path((game_id)): web::Path<String>,
+    web::Path(game_id): web::Path<String>,
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<WaitForUpdateRes>> {
     let game_id = GameId::from(&game_id)?;

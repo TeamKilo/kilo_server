@@ -209,7 +209,13 @@ impl GameManager {
         }
     }
 
-    pub fn receive_move(&self, session_id: SessionId, encoded_move: Value) -> Result<()> {
+    pub fn receive_move(
+        &self,
+        game_id: GameId,
+        session_id: SessionId,
+        encoded_move: Value,
+    ) -> Result<()> {
+        GameManager::get_game_adapter_mutex(&self.games, game_id)?;
         let session = GameManager::get_session(&self.sessions, session_id)?;
         let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, session.game_id)?;
         let mut game_adapter = game_adapter_mutex.lock().unwrap();
