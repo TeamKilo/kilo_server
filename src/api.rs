@@ -7,7 +7,7 @@ use actix_web::web::Json;
 use actix_web::{get, post, web, Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::RwLock;
+use std::time::Duration;
 
 /* Helpers */
 
@@ -128,6 +128,16 @@ pub(crate) async fn wait_for_update(
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<WaitForUpdateRes>> {
     let game_id = GameId::from(&game_id)?;
-    gm_wrapped.wait_for_update(game_id)?.recv().await;
-    Ok(Json(WaitForUpdateRes { updated: true }))
+    let timeout_duration = Duration::from_secs(5);
+    Ok(Json(WaitForUpdateRes {
+        updated: match tokio::time::timeout(
+            timeout_duration,
+            gm_wrapped.wait_for_update(game_id)?.recv(),
+        )
+        .await
+        {
+            Ok(_) => true,
+            Err(_) => false,
+        },
+    }))
 }
