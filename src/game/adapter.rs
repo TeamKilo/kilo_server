@@ -1,4 +1,4 @@
-use crate::game::{GameId, SessionId};
+use crate::game::GameId;
 use actix_web::http::StatusCode;
 use actix_web::{ResponseError, Result};
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,9 @@ use tokio::sync::broadcast;
 pub enum GameAdapterError {
     PlayerLimitExceeded(usize),
     InvalidGameState(State),
+    WrongPlayerRequest(String),
+    WrongMoveRequest(usize),
+    GameEnded(),
 }
 
 impl fmt::Display for GameAdapterError {
@@ -22,6 +25,19 @@ impl fmt::Display for GameAdapterError {
             }
             GameAdapterError::InvalidGameState(state) => {
                 write!(f, "invalid operation for state {}", state)
+            }
+            GameAdapterError::WrongPlayerRequest(user) => {
+                write!(f, "invalid user turn for {}", user)
+            }
+            GameAdapterError::WrongMoveRequest(column) => {
+                write!(
+                    f,
+                    "invalid move, column {} is  either full or non-existent",
+                    column
+                )
+            }
+            GameAdapterError::GameEnded() => {
+                write!(f, "Game has already ended")
             }
         }
     }
@@ -76,4 +92,5 @@ pub trait GameAdapter: Send {
     fn has_player(&self, username: &str) -> bool;
     fn play_move(&mut self, game_move: GenericGameMove) -> Result<()>;
     fn get_encoded_state(&self) -> Result<GenericGameState>;
+    fn get_user_from_token(&self) -> String;
 }

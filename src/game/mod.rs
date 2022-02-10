@@ -1,11 +1,10 @@
 pub mod adapter;
 pub mod connect4;
 
-use crate::game::adapter::{GenericGameMove, GenericGameState};
+use crate::game::adapter::{GameAdapter, GenericGameMove, GenericGameState};
 use crate::game::ValidationError::ParseIdError;
 use actix_web::http::StatusCode;
 use actix_web::{Error, ResponseError, Result};
-use adapter::GameAdapter;
 use dashmap::mapref::entry::Entry;
 use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
@@ -176,7 +175,6 @@ impl GameManager {
             sessions: DashMap::new(),
         }
     }
-
     pub fn create_game(&self, game: impl FnOnce(GameId) -> Box<dyn GameAdapter>) -> Result<GameId> {
         loop {
             let game_id = GameId::new();
