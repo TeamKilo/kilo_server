@@ -1,3 +1,6 @@
+extern crate tokio;
+extern crate serde_json;
+
 mod api;
 mod game;
 

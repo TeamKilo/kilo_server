@@ -2,7 +2,7 @@ use crate::game::adapter::{
     GameAdapter, GameAdapterError, GenericGameMove, GenericGameState, State,
 };
 use crate::game::GameId;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::vec;
 use std::vec::Vec;
 use tokio::sync::broadcast;
@@ -25,6 +25,11 @@ pub struct Connect4Adapter {
 #[derive(Deserialize)]
 struct Connect4RequestPayload {
     column: usize,
+}
+
+#[derive(Serialize)]
+struct Connect4ResponsePayload<'a> {
+    cells: Vec<Vec<&'a String>>,
 }
 struct Connect4 {
     completed: bool,
@@ -66,9 +71,6 @@ impl GameAdapter for Connect4Adapter {
             ));
         }
         self.players.push(username);
-        if self.players.len() == NUM_PLAYERS {
-            self.state = State::InProgress
-        }
         self.notifier.send(());
         Ok(())
     }
@@ -86,13 +88,16 @@ impl GameAdapter for Connect4Adapter {
     }
 
     fn play_move(&mut self, game_move: GenericGameMove) -> actix_web::Result<()> {
-        if self.state != State::InProgress {
+        if self.state == State::Waiting {
             return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(
                 self.state,
             )));
         }
-        let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload)?;
-        let column = request_payload.column;
+        if self.state == State::Ended {
+            return Err(actix_web::Error::from(GameAdapterError::GameEnded()));
+        }
+        let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload);
+        let column = request_payload.unwrap().column;
         let player = self.get_user_from_token();
         let user = game_move.player;
 
@@ -109,6 +114,7 @@ impl GameAdapter for Connect4Adapter {
         }
         if win || draw {
             self.game.completed = true;
+            self.state = State::Ended;
         } else {
             self.game.switch_token();
         }
@@ -123,21 +129,31 @@ impl GameAdapter for Connect4Adapter {
             .iter()
             .map(|col| {
                 col.iter()
-                    .map(|&token| match token {
-                        Token::Red => self.players.get(0),
-                        Token::Blue => self.players.get(1),
+                    .map(|&token| {
+                        match token {
+                            Token::Red => self.players.get(0),
+                            Token::Blue => self.players.get(1),
+                        }
+                        .unwrap()
                     })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
 
+        let response_payload = Connect4ResponsePayload {
+            cells: encoded_board,
+        };
         Ok(GenericGameState {
             game: "connect_4".to_string(),
             players: self.players.clone(),
             state: self.state,
-            can_move: vec![self.get_user_from_token()],
-            winners: vec![],
-            payload: serde_json::to_value(&encoded_board)?,
+            can_move: if self.state == State::InProgress {
+                vec![self.get_user_from_token()]
+            } else {
+                vec![]
+            },
+            winners: self.winner.clone(),
+            payload: serde_json::to_value(&response_payload)?,
         })
     }
 }

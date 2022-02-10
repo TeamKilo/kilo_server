@@ -14,6 +14,7 @@ pub enum GameAdapterError {
     InvalidGameState(State),
     WrongPlayerRequest(String),
     WrongMoveRequest(usize),
+    GameEnded(),
 }
 
 impl fmt::Display for GameAdapterError {
@@ -34,6 +35,9 @@ impl fmt::Display for GameAdapterError {
                     "invalid move, column {} is  either full or non-existent",
                     column
                 )
+            }
+            GameAdapterError::GameEnded() => {
+                write!(f, "Game has already ended")
             }
         }
     }
