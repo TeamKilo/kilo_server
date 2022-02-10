@@ -77,6 +77,14 @@ impl GameAdapter for Connect4Adapter {
         self.players.iter().any(|s| s.eq(username))
     }
 
+    fn get_user_from_token(&self) -> String {
+        let user = match self.game.turn {
+            Token::Red => self.players.get(0).unwrap().clone(),
+            Token::Blue => self.players.get(1).unwrap().clone(),
+        };
+        user
+    }
+
     fn play_move(&mut self, game_move: GenericGameMove) -> actix_web::Result<()> {
         if self.state != State::InProgress {
             return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(
@@ -85,10 +93,7 @@ impl GameAdapter for Connect4Adapter {
         }
         let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload)?;
         let column = request_payload.column;
-        let player = match self.game.turn {
-            Token::Red => self.players.get(0).unwrap().clone(),
-            Token::Blue => self.players.get(1).unwrap().clone(),
-        };
+        let player = self.get_user_from_token();
         let user = game_move.player;
 
         if player != user {
@@ -100,11 +105,7 @@ impl GameAdapter for Connect4Adapter {
         let win = self.game.winning_move(column);
         let draw = self.game.is_game_drawn();
         if win {
-            let winner = match self.game.turn {
-                Token::Red => self.players.get(0).unwrap().clone(),
-                Token::Blue => self.players.get(1).unwrap().clone(),
-            };
-            self.winner.push(winner);
+            self.winner.push(self.get_user_from_token());
         }
         if win || draw {
             self.game.completed = true;
@@ -129,11 +130,12 @@ impl GameAdapter for Connect4Adapter {
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
+
         Ok(GenericGameState {
             game: "connect_4".to_string(),
             players: self.players.clone(),
             state: self.state,
-            //  can_move: vec![self.next_move.clone()],
+            can_move: vec![self.get_user_from_token()],
             winners: vec![],
             payload: serde_json::to_value(&encoded_board)?,
         })

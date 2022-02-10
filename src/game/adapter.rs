@@ -67,7 +67,7 @@ impl Display for State {
 pub struct GenericGameState {
     pub game: String,
     pub players: Vec<String>,
-    //pub can_move: Vec<String>,
+    pub can_move: Vec<String>,
     pub winners: Vec<String>,
     pub state: State,
     pub payload: Value,
@@ -88,4 +88,5 @@ pub trait GameAdapter: Send {
     fn has_player(&self, username: &str) -> bool;
     fn play_move(&mut self, game_move: GenericGameMove) -> Result<()>;
     fn get_encoded_state(&self) -> Result<GenericGameState>;
+    fn get_user_from_token(&self) -> String;
 }
