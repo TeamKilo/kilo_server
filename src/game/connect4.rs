@@ -233,11 +233,12 @@ impl Connect4 {
                 ok = false;
             }
         }
+        col_aux = column + 1;
         while (lenr < CONNECT_FOUR)
             && (col_aux < COL_SIZE)
             && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
         {
-            lenl += 1;
+            lenr += 1;
             col_aux += 1;
         }
         if lenl + lenr >= CONNECT_FOUR {
@@ -263,22 +264,26 @@ impl Connect4 {
             }
             row_aux += 1;
         }
-        ok = true;
-        row_aux = row;
-        col_aux = column;
-        while (lenr < CONNECT_FOUR)
-            && (col_aux < COL_SIZE)
-            && (ok)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if row_aux > 0 {
-                row_aux -= 1;
-            } else {
-                ok = false;
+
+        if row > 0 {
+            ok = true;
+            row_aux = row - 1;
+            col_aux = column + 1;
+            while (lenr < CONNECT_FOUR)
+                && (col_aux < COL_SIZE)
+                && (ok)
+                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
+            {
+                lenr += 1;
+                if row_aux > 0 {
+                    row_aux -= 1;
+                } else {
+                    ok = false;
+                }
+                col_aux += 1;
             }
-            col_aux += 1;
         }
+
         if lenl + lenr >= CONNECT_FOUR {
             return true;
         }
@@ -305,19 +310,20 @@ impl Connect4 {
                 ok = false;
             }
         }
-        row_aux = row;
-        col_aux = column;
+        row_aux = row + 1;
+        col_aux = column + 1;
         while (lenr < CONNECT_FOUR)
             && (col_aux < COL_SIZE)
             && (row_aux < ROW_SIZE)
             && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
         {
-            lenl += 1;
+            lenr += 1;
             col_aux += 1;
             row_aux += 1;
         }
         lenl + lenr >= CONNECT_FOUR
     }
+
     fn is_game_drawn(&self) -> bool {
         self.board.iter().all(|ref col| col.len() == ROW_SIZE)
     }
