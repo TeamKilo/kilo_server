@@ -7,47 +7,42 @@ use actix_web::{get, post, web, Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/* Helpers */
-
-/* Structs for the different endpoints*/
-
-/// Struct for req to `/api/create-game`
 #[derive(Deserialize)]
 pub struct CreateGameReq {
     name: String,
 }
 
-/// Struct for res from `/api/create-game`
 #[derive(Serialize)]
 pub struct CreateGameRes {
     game_id: String,
 }
 
-/// Struct for req to `/api/join-game`
 #[derive(Deserialize)]
 pub struct JoinGameReq {
     username: String,
 }
 
-/// Struct for res from `/api/join-game`
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 pub struct JoinGameRes {
     session_id: String,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
 pub struct SubmitMoveReq {
     session_id: String,
     payload: Value,
 }
 
-/// Struct for res from `/api/{game_id}/submit-move`
 #[derive(Serialize)]
 pub struct SubmitMoveRes {
     success: bool,
 }
 
-/// Struct for res from `/api/{game_id}/submit-move`
+#[derive(Deserialize)]
+pub struct WaitForUpdateQuery {
+    since: Option<usize>,
+}
+
 #[derive(Serialize)]
 pub struct WaitForUpdateRes {
     clock: usize,
@@ -129,10 +124,14 @@ pub(crate) async fn submit_move(
 #[get("/api/{game_id}/wait-for-update")]
 pub(crate) async fn wait_for_update(
     web::Path(game_id): web::Path<String>,
+    query: web::Query<WaitForUpdateQuery>,
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<WaitForUpdateRes>> {
     let game_id = GameId::from(&game_id)?;
     Ok(Json(WaitForUpdateRes {
-        clock: gm_wrapped.wait_for_update(game_id)?.wait().await?,
+        clock: gm_wrapped
+            .subscribe(game_id)?
+            .wait(query.since.unwrap_or(0))
+            .await?,
     }))
 }
