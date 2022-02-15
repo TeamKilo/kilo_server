@@ -2,11 +2,10 @@ use crate::game::adapter::{
     GameAdapter, GameAdapterError, GenericGameMove, GenericGameState, State,
 };
 use crate::game::GameId;
+use crate::notify::Notifier;
 use serde::{Deserialize, Serialize};
 use std::vec;
 use std::vec::Vec;
-use tokio::sync::broadcast;
-use tokio::sync::broadcast::Sender;
 
 const NUM_PLAYERS: usize = 2;
 const ROW_SIZE: usize = 6;
@@ -17,7 +16,7 @@ pub struct Connect4Adapter {
     game_id: GameId,
     players: Vec<String>,
     state: State,
-    notifier: broadcast::Sender<()>,
+    notifier: Notifier,
     game: Connect4,
     winner: Vec<String>,
 }
@@ -53,7 +52,7 @@ impl GameAdapter for Connect4Adapter {
             game_id,
             players: vec![],
             state: State::Waiting,
-            notifier: broadcast::channel(16).0,
+            notifier: Notifier::new(),
             game: Connect4 {
                 completed: false,
                 turn: Token::Red,
@@ -63,7 +62,7 @@ impl GameAdapter for Connect4Adapter {
         }
     }
 
-    fn get_notifier(&self) -> &Sender<()> {
+    fn get_notifier(&self) -> &Notifier {
         &self.notifier
     }
 
@@ -78,7 +77,7 @@ impl GameAdapter for Connect4Adapter {
         if self.players.len() == NUM_PLAYERS {
             self.state = State::InProgress;
         }
-        let _ = self.notifier.send(());
+        self.notifier.send();
         Ok(())
     }
 
@@ -117,7 +116,7 @@ impl GameAdapter for Connect4Adapter {
         } else {
             self.game.switch_token();
         }
-        let _ = self.notifier.send(());
+        self.notifier.send();
         Ok(())
     }
 
