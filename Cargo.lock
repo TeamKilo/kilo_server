@@ -898,6 +898,7 @@ dependencies = [
  "actix-cors",
  "actix-web",
  "dashmap",
+ "derive_more",
  "env_logger",
  "rand 0.8.4",
  "serde",

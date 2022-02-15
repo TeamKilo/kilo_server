@@ -31,16 +31,19 @@ struct Connect4RequestPayload {
 struct Connect4ResponsePayload<'a> {
     cells: Vec<Vec<&'a String>>,
 }
+
 struct Connect4 {
     completed: bool,
     turn: Token,
     board: Vec<Vec<Token>>, // vector of columns, each variable length.
 }
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum Token {
     Red,
     Blue,
 }
+
 impl GameAdapter for Connect4Adapter {
     fn new(game_id: GameId) -> Self
     where
@@ -75,20 +78,12 @@ impl GameAdapter for Connect4Adapter {
         if self.players.len() == NUM_PLAYERS {
             self.state = State::InProgress;
         }
-        self.notifier.send(());
+        self.notifier.send(()).unwrap();
         Ok(())
     }
 
     fn has_player(&self, username: &str) -> bool {
         self.players.iter().any(|s| s.eq(username))
-    }
-
-    fn get_user_from_token(&self) -> String {
-        let user = match self.game.turn {
-            Token::Red => self.players.get(0).unwrap().clone(),
-            Token::Blue => self.players.get(1).unwrap().clone(),
-        };
-        user
     }
 
     fn play_move(&mut self, game_move: GenericGameMove) -> actix_web::Result<()> {
@@ -98,7 +93,7 @@ impl GameAdapter for Connect4Adapter {
             )));
         }
         if self.state == State::Ended {
-            return Err(actix_web::Error::from(GameAdapterError::GameEnded()));
+            return Err(actix_web::Error::from(GameAdapterError::GameEnded));
         }
         let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload);
         let column = request_payload.unwrap().column;
@@ -106,9 +101,9 @@ impl GameAdapter for Connect4Adapter {
         let user = game_move.player;
 
         if player != user {
-            return Err(actix_web::Error::from(
-                GameAdapterError::WrongPlayerRequest(user),
-            )); // return the one who made the request
+            return Err(actix_web::Error::from(GameAdapterError::InvalidPlayer(
+                user,
+            ))); // return the one who made the request
         }
         self.game.moves(column)?;
         let win = self.game.winning_move(column);
@@ -122,7 +117,7 @@ impl GameAdapter for Connect4Adapter {
         } else {
             self.game.switch_token();
         }
-        self.notifier.send(());
+        self.notifier.send(()).unwrap();
         Ok(())
     }
 
@@ -160,6 +155,14 @@ impl GameAdapter for Connect4Adapter {
             payload: serde_json::to_value(&response_payload)?,
         })
     }
+
+    fn get_user_from_token(&self) -> String {
+        let user = match self.game.turn {
+            Token::Red => self.players.get(0).unwrap().clone(),
+            Token::Blue => self.players.get(1).unwrap().clone(),
+        };
+        user
+    }
 }
 
 impl Connect4 {
@@ -169,12 +172,12 @@ impl Connect4 {
 
     fn insert_move_if_legal(&mut self, column: usize) -> actix_web::Result<()> {
         if column >= COL_SIZE {
-            return Err(actix_web::Error::from(GameAdapterError::WrongMoveRequest(
-                column,
+            return Err(actix_web::Error::from(GameAdapterError::InvalidMove(
+                format!("column {} does not exist", column),
             )));
         } else if self.board.get(column).unwrap().len() >= ROW_SIZE {
-            return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(
-                State::InProgress,
+            return Err(actix_web::Error::from(GameAdapterError::InvalidMove(
+                format!("column {} is already full", column),
             )));
         } else {
             self.board.get_mut(column).unwrap().push(self.turn);

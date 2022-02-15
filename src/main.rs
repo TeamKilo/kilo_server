@@ -3,10 +3,10 @@ mod game;
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpRequest, HttpServer, Responder};
-use std::cell::RefCell;
+use actix_web::{web, App, Error, HttpServer};
 use std::env;
-use std::sync::RwLock;
+
+const MAX_JSON_PAYLOAD_SIZE: usize = 4096;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -16,11 +16,16 @@ async fn main() -> std::io::Result<()> {
     let port = env::var("PORT").unwrap_or("8080".to_string());
 
     let game_manager = web::Data::new(game::GameManager::new());
+    let json_config = web::JsonConfig::default()
+        .limit(MAX_JSON_PAYLOAD_SIZE)
+        .error_handler(|err, _req| Error::from(err));
+
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
             .wrap(Cors::permissive())
             .app_data(game_manager.clone())
+            .app_data(json_config.clone())
             .service(api::create_game)
             .service(api::list_games)
             .service(api::join_game)
