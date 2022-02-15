@@ -1,5 +1,6 @@
 mod api;
 mod game;
+mod notify;
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
