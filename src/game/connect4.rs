@@ -78,7 +78,7 @@ impl GameAdapter for Connect4Adapter {
         if self.players.len() == NUM_PLAYERS {
             self.state = State::InProgress;
         }
-        self.notifier.send(()).unwrap();
+        let _ = self.notifier.send(());
         Ok(())
     }
 
@@ -117,7 +117,7 @@ impl GameAdapter for Connect4Adapter {
         } else {
             self.game.switch_token();
         }
-        self.notifier.send(()).unwrap();
+        let _ = self.notifier.send(());
         Ok(())
     }
 
