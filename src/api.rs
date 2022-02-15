@@ -129,9 +129,6 @@ pub(crate) async fn wait_for_update(
 ) -> Result<Json<WaitForUpdateRes>> {
     let game_id = GameId::from(&game_id)?;
     Ok(Json(WaitForUpdateRes {
-        clock: gm_wrapped
-            .subscribe(game_id)?
-            .wait(query.since.unwrap_or(0))
-            .await?,
+        clock: gm_wrapped.subscribe(game_id)?.wait(query.since).await?,
     }))
 }

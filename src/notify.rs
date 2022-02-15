@@ -49,8 +49,8 @@ impl Notifier {
 const TIMEOUT_DURATION: Duration = Duration::from_secs(5);
 
 impl Subscription {
-    pub async fn wait(&mut self, since: usize) -> actix_web::Result<usize> {
-        if self.clock > since {
+    pub async fn wait(&mut self, since: Option<usize>) -> actix_web::Result<usize> {
+        if since.is_some() && self.clock > since.unwrap() {
             Ok(self.clock)
         } else {
             match timeout(TIMEOUT_DURATION, self.receiver.recv()).await {
