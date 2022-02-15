@@ -23,39 +23,42 @@ pub struct GameId(u128);
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
 pub struct SessionId(u128);
 
+fn validate_id(id: &String, prefix: &str) -> Result<u128, Error> {
+    let parse_id_error = || actix_web::Error::from(GameManagerError::ParseIdError(id.clone()));
+
+    if !id.starts_with(prefix) {
+        return Err(parse_id_error());
+    }
+
+    let base64 = &id[prefix.len()..];
+    let id_vec =
+        base64::decode_config(base64, base64::URL_SAFE_NO_PAD).or(Err(parse_id_error()))?;
+
+    Ok(u128::from_be_bytes(
+        id_vec.as_slice().try_into().or(Err(parse_id_error()))?,
+    ))
+}
+
 impl GameId {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
         let id: u128 = rng.gen();
         GameId(id)
     }
+
     // Added for API to create a GameId object to input to the GameManager
     pub fn from(id: &String) -> Result<Self> {
-        GameId::validate_id(id).and_then(|id| Ok(GameId(id)))
-    }
-
-    /// validate_id
-    fn validate_id(game_id: &String) -> Result<u128, Error> {
-        if !game_id.starts_with("game_") {
-            return Err(actix_web::Error::from(GameManagerError::ParseIdError(
-                game_id.clone(),
-            )));
-        }
-        let game_id_int = u128::from_str_radix(&game_id[5..], 10);
-        match game_id_int {
-            Ok(value) => Ok(value),
-            Err(_) => {
-                return Err(actix_web::Error::from(GameManagerError::ParseIdError(
-                    game_id.clone(),
-                )))
-            }
-        }
+        validate_id(id, "game_").and_then(|id| Ok(GameId(id)))
     }
 }
 
 impl fmt::Display for GameId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "game_{}", self.0)
+        write!(
+            f,
+            "game_{}",
+            base64::encode_config(self.0.to_be_bytes(), base64::URL_SAFE_NO_PAD)
+        )
     }
 }
 
@@ -65,33 +68,20 @@ impl SessionId {
         let id: u128 = rng.gen();
         SessionId(id)
     }
+
     // Added for API to create a SessionId object
     pub fn from(id: &String) -> Result<Self> {
-        SessionId::validate_id(id).and_then(|id| Ok(Self(id)))
-    }
-
-    /// validate_id
-    fn validate_id(session_id: &String) -> Result<u128, Error> {
-        if !session_id.starts_with("session_") {
-            return Err(actix_web::Error::from(GameManagerError::ParseIdError(
-                session_id.clone(),
-            )));
-        }
-        let session_id_int = u128::from_str_radix(&session_id[8..], 10);
-        match session_id_int {
-            Ok(value) => Ok(value),
-            Err(_) => {
-                return Err(actix_web::Error::from(GameManagerError::ParseIdError(
-                    session_id.clone(),
-                )))
-            }
-        }
+        validate_id(id, "session_").and_then(|id| Ok(Self(id)))
     }
 }
 
 impl fmt::Display for SessionId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "session_{}", self.0)
+        write!(
+            f,
+            "session_{}",
+            base64::encode_config(self.0.to_be_bytes(), base64::URL_SAFE_NO_PAD)
+        )
     }
 }
 
