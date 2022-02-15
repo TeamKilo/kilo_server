@@ -94,8 +94,8 @@ impl GameAdapter for Connect4Adapter {
         if self.state == State::Ended {
             return Err(actix_web::Error::from(GameAdapterError::GameEnded));
         }
-        let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload);
-        let column = request_payload.unwrap().column;
+        let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload)?;
+        let column = request_payload.column;
         let player = self.get_user_from_token();
         let user = game_move.player;
 
