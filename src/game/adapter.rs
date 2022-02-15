@@ -1,46 +1,24 @@
 use crate::game::GameId;
 use actix_web::http::StatusCode;
 use actix_web::{ResponseError, Result};
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fmt;
-use std::fmt::{Display, Formatter};
 use std::vec::Vec;
 use tokio::sync::broadcast;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
 pub enum GameAdapterError {
+    #[display(fmt = "limit of {} players exceeded", _0)]
     PlayerLimitExceeded(usize),
+    #[display(fmt = "invalid operation for state {}", _0)]
     InvalidGameState(State),
-    WrongPlayerRequest(String),
-    WrongMoveRequest(usize),
-    GameEnded(),
-}
-
-impl fmt::Display for GameAdapterError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            GameAdapterError::PlayerLimitExceeded(size) => {
-                write!(f, "limit of {} players exceeded", size)
-            }
-            GameAdapterError::InvalidGameState(state) => {
-                write!(f, "invalid operation for state {}", state)
-            }
-            GameAdapterError::WrongPlayerRequest(user) => {
-                write!(f, "invalid user turn for {}", user)
-            }
-            GameAdapterError::WrongMoveRequest(column) => {
-                write!(
-                    f,
-                    "invalid move, column {} is  either full or non-existent",
-                    column
-                )
-            }
-            GameAdapterError::GameEnded() => {
-                write!(f, "Game has already ended")
-            }
-        }
-    }
+    #[display(fmt = "user {} cannot move at the moment", _0)]
+    InvalidPlayer(String),
+    #[display(fmt = "invalid move: {}", _0)]
+    InvalidMove(String),
+    #[display(fmt = "game has already ended")]
+    GameEnded,
 }
 
 impl ResponseError for GameAdapterError {
@@ -49,22 +27,15 @@ impl ResponseError for GameAdapterError {
     }
 }
 
-#[derive(Serialize, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Serialize, Debug, Copy, Clone, Eq, PartialEq, Display)]
 #[serde(rename_all = "snake_case")]
 pub enum State {
+    #[display(fmt = "waiting")]
     Waiting,
+    #[display(fmt = "in_progress")]
     InProgress,
+    #[display(fmt = "ended")]
     Ended,
-}
-
-impl Display for State {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            State::Waiting => write!(f, "waiting"),
-            State::InProgress => write!(f, "in_progress"),
-            State::Ended => write!(f, "ended"),
-        }
-    }
 }
 
 #[derive(Serialize)]
