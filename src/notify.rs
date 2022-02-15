@@ -30,7 +30,7 @@ impl Notifier {
     pub fn new() -> Self {
         Notifier {
             sender: broadcast::channel(8).0,
-            clock: AtomicUsize::new(0),
+            clock: AtomicUsize::new(1),
         }
     }
 
@@ -49,11 +49,15 @@ impl Notifier {
 const TIMEOUT_DURATION: Duration = Duration::from_secs(5);
 
 impl Subscription {
-    pub async fn wait(&mut self) -> actix_web::Result<usize> {
-        match timeout(TIMEOUT_DURATION, self.receiver.recv()).await {
-            Ok(Ok(clk)) => Ok(clk),
-            Ok(Err(_)) => Err(Error::from(NotifierError {})),
-            Err(_) => Ok(self.clock),
+    pub async fn wait(&mut self, since: usize) -> actix_web::Result<usize> {
+        if self.clock > since {
+            Ok(self.clock)
+        } else {
+            match timeout(TIMEOUT_DURATION, self.receiver.recv()).await {
+                Ok(Ok(clk)) => Ok(clk),
+                Ok(Err(_)) => Err(Error::from(NotifierError {})),
+                Err(_) => Ok(self.clock),
+            }
         }
     }
 }

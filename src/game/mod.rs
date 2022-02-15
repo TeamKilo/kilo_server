@@ -216,7 +216,7 @@ impl GameManager {
         Ok(games)
     }
 
-    pub fn wait_for_update(&self, game_id: GameId) -> Result<Subscription> {
+    pub fn subscribe(&self, game_id: GameId) -> Result<Subscription> {
         Ok(GameManager::get_game_adapter_mutex(&self.games, game_id)?
             .lock()
             .unwrap()
