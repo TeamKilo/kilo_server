@@ -4,7 +4,6 @@ pub mod connect4;
 use crate::game::adapter::{GameAdapter, GenericGameMove, GenericGameState};
 use actix_web::http::StatusCode;
 use actix_web::{Error, ResponseError, Result};
-use base64::URL_SAFE_NO_PAD;
 use dashmap::mapref::entry::Entry;
 use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
@@ -32,7 +31,8 @@ fn validate_id(id: &String, prefix: &str) -> Result<u128, Error> {
     }
 
     let base64 = &id[prefix.len()..];
-    let id_vec = base64::decode_config(base64, URL_SAFE_NO_PAD).or(Err(parse_id_error()))?;
+    let id_vec =
+        base64::decode_config(base64, base64::URL_SAFE_NO_PAD).or(Err(parse_id_error()))?;
 
     Ok(u128::from_be_bytes(
         id_vec.as_slice().try_into().or(Err(parse_id_error()))?,
