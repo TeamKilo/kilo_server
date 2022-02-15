@@ -18,37 +18,37 @@ use std::ops::DerefMut;
 use std::sync::Mutex;
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
-pub struct GameId(u128);
+pub struct GameId([u8; 4]);
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
-pub struct SessionId(u128);
+pub struct SessionId([u8; 16]);
 
-fn validate_id(id: &String, prefix: &str) -> Result<u128, Error> {
-    let parse_id_error = || actix_web::Error::from(GameManagerError::ParseIdError(id.clone()));
+fn new_parse_id_error(id: &String) -> Error {
+    actix_web::Error::from(GameManagerError::ParseIdError(id.clone()))
+}
 
+fn validate_id(id: &String, prefix: &str) -> Result<Vec<u8>, Error> {
     if !id.starts_with(prefix) {
-        return Err(parse_id_error());
+        return Err(new_parse_id_error(id));
     }
 
     let base64 = &id[prefix.len()..];
-    let id_vec =
-        base64::decode_config(base64, base64::URL_SAFE_NO_PAD).or(Err(parse_id_error()))?;
 
-    Ok(u128::from_be_bytes(
-        id_vec.as_slice().try_into().or(Err(parse_id_error()))?,
-    ))
+    base64::decode_config(base64, base64::URL_SAFE_NO_PAD).or(Err(new_parse_id_error(id)))
 }
 
 impl GameId {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
-        let id: u128 = rng.gen();
-        GameId(id)
+        let bytes: [u8; 4] = rng.gen();
+        GameId(bytes)
     }
 
     // Added for API to create a GameId object to input to the GameManager
     pub fn from(id: &String) -> Result<Self> {
-        validate_id(id, "game_").and_then(|id| Ok(GameId(id)))
+        let vec = validate_id(id, "game_")?;
+        let bytes = TryInto::<[u8; 4]>::try_into(vec).or(Err(new_parse_id_error(id)))?;
+        Ok(GameId(bytes))
     }
 }
 
@@ -57,7 +57,7 @@ impl fmt::Display for GameId {
         write!(
             f,
             "game_{}",
-            base64::encode_config(self.0.to_be_bytes(), base64::URL_SAFE_NO_PAD)
+            base64::encode_config(self.0, base64::URL_SAFE_NO_PAD)
         )
     }
 }
@@ -65,13 +65,15 @@ impl fmt::Display for GameId {
 impl SessionId {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
-        let id: u128 = rng.gen();
-        SessionId(id)
+        let bytes: [u8; 16] = rng.gen();
+        SessionId(bytes)
     }
 
     // Added for API to create a SessionId object
     pub fn from(id: &String) -> Result<Self> {
-        validate_id(id, "session_").and_then(|id| Ok(Self(id)))
+        let vec = validate_id(id, "session_")?;
+        let bytes = TryInto::<[u8; 16]>::try_into(vec).or(Err(new_parse_id_error(id)))?;
+        Ok(SessionId(bytes))
     }
 }
 
@@ -80,7 +82,7 @@ impl fmt::Display for SessionId {
         write!(
             f,
             "session_{}",
-            base64::encode_config(self.0.to_be_bytes(), base64::URL_SAFE_NO_PAD)
+            base64::encode_config(self.0, base64::URL_SAFE_NO_PAD)
         )
     }
 }
