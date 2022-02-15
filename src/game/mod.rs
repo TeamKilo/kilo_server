@@ -2,42 +2,20 @@ pub mod adapter;
 pub mod connect4;
 
 use crate::game::adapter::{GameAdapter, GenericGameMove, GenericGameState};
-use crate::game::ValidationError::ParseIdError;
 use actix_web::http::StatusCode;
 use actix_web::{Error, ResponseError, Result};
 use dashmap::mapref::entry::Entry;
 use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
+use derive_more::Display;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::Formatter;
 use std::ops::DerefMut;
 use std::sync::Mutex;
 use tokio::sync::broadcast;
-
-/// ValidationError
-#[derive(Debug, Clone)]
-pub enum ValidationError {
-    ParseIdError(String),
-    NoSuchGameError(String),
-}
-
-impl Display for ValidationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            ValidationError::ParseIdError(id) => write!(f, "ID {} is Invalid", id),
-            ValidationError::NoSuchGameError(game) => write!(f, "Game {} not found", game),
-        }
-    }
-}
-
-impl ResponseError for ValidationError {
-    fn status_code(&self) -> StatusCode {
-        StatusCode::BAD_REQUEST
-    }
-}
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
 pub struct GameId(u128);
@@ -59,16 +37,18 @@ impl GameId {
     /// validate_id
     fn validate_id(game_id: &String) -> Result<u128, Error> {
         if !game_id.starts_with("game_") {
-            return Err(actix_web::Error::from(ParseIdError(game_id.clone())));
+            return Err(actix_web::Error::from(GameManagerError::ParseIdError(
+                game_id.clone(),
+            )));
         }
         let game_id_int = u128::from_str_radix(&game_id[5..], 10);
         match game_id_int {
             Ok(value) => Ok(value),
             Err(_) => {
-                return Err(actix_web::Error::from(ValidationError::ParseIdError(
+                return Err(actix_web::Error::from(GameManagerError::ParseIdError(
                     game_id.clone(),
                 )))
-            } // TODO: need custom error
+            }
         }
     }
 }
@@ -93,16 +73,18 @@ impl SessionId {
     /// validate_id
     fn validate_id(session_id: &String) -> Result<u128, Error> {
         if !session_id.starts_with("session_") {
-            return Err(actix_web::Error::from(ParseIdError(session_id.clone())));
+            return Err(actix_web::Error::from(GameManagerError::ParseIdError(
+                session_id.clone(),
+            )));
         }
         let session_id_int = u128::from_str_radix(&session_id[8..], 10);
         match session_id_int {
             Ok(value) => Ok(value),
             Err(_) => {
-                return Err(actix_web::Error::from(ValidationError::ParseIdError(
+                return Err(actix_web::Error::from(GameManagerError::ParseIdError(
                     session_id.clone(),
                 )))
-            } // TODO: need custom error
+            }
         }
     }
 }
@@ -113,53 +95,30 @@ impl fmt::Display for SessionId {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
 pub enum GameManagerError {
+    #[display(fmt = "invalid id: {}", _0)]
+    ParseIdError(String),
+    #[display(fmt = "game {} does not exist", _0)]
+    NoSuchGameError(String),
+    #[display(fmt = "no game with id {}", _0)]
     GameIdDoesNotExist(GameId),
+    #[display(fmt = "no session with id {}", _0)]
     SessionIdDoesNotExist(SessionId),
-    DuplicateUsername {
-        username: String,
-        game_id: GameId,
-    },
+    #[display(fmt = "username {} already in game with id {}", username, game_id)]
+    DuplicateUsername { username: String, game_id: GameId },
+    #[display(fmt = "session {} does not match game id {}", session_id, game_id)]
     GameIdDoesNotMatch {
         game_id: GameId,
         session_id: SessionId,
     },
 }
 
-impl fmt::Display for GameManagerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            GameManagerError::GameIdDoesNotExist(game_id) => {
-                write!(f, "Game corresponding to {} does not exist", game_id)
-            }
-            GameManagerError::SessionIdDoesNotExist(session_id) => {
-                write!(f, "Session corresponding to {} does not exist", session_id)
-            }
-            GameManagerError::DuplicateUsername { username, game_id } => {
-                write!(
-                    f,
-                    "Player with username {} already in game corresponding to {}",
-                    username, game_id
-                )
-            }
-            GameManagerError::GameIdDoesNotMatch {
-                game_id,
-                session_id,
-            } => {
-                write!(
-                    f,
-                    "Session corresponding to {} does not belong to game corresponding to {}",
-                    session_id, game_id
-                )
-            }
-        }
-    }
-}
-
 impl ResponseError for GameManagerError {
     fn status_code(&self) -> StatusCode {
         match self {
+            GameManagerError::ParseIdError(_) => StatusCode::BAD_REQUEST,
+            GameManagerError::NoSuchGameError(_) => StatusCode::BAD_REQUEST,
             GameManagerError::GameIdDoesNotExist(_) => StatusCode::NOT_FOUND,
             GameManagerError::SessionIdDoesNotExist(_) => StatusCode::NOT_FOUND,
             GameManagerError::DuplicateUsername { .. } => StatusCode::CONFLICT,

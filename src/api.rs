@@ -1,8 +1,7 @@
 // API endpoints
 
 use crate::game::adapter::GameAdapter;
-use crate::game::ValidationError::NoSuchGameError;
-use crate::game::{adapter, connect4, GameId, GameManager, SessionId};
+use crate::game::{adapter, connect4, GameId, GameManager, GameManagerError, SessionId};
 use actix_web::web::Json;
 use actix_web::{get, post, web, Error, Result};
 use serde::{Deserialize, Serialize};
@@ -63,7 +62,11 @@ pub(crate) async fn create_game(
     // Validate & Pass it on
     let game_id = match payload.name.as_str() {
         "connect_4" => gm_wrapped.create_game(|id| Box::new(connect4::Connect4Adapter::new(id))),
-        _ => return Err(Error::from(NoSuchGameError(payload.name.clone()))),
+        _ => {
+            return Err(Error::from(GameManagerError::NoSuchGameError(
+                payload.name.clone(),
+            )))
+        }
     };
     game_id.and_then(|id| {
         Ok(Json(CreateGameRes {
