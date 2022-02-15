@@ -2,6 +2,7 @@ pub mod adapter;
 pub mod connect4;
 
 use crate::game::adapter::{GameAdapter, GenericGameMove, GenericGameState};
+use crate::notify::Subscription;
 use actix_web::http::StatusCode;
 use actix_web::{Error, ResponseError, Result};
 use dashmap::mapref::entry::Entry;
@@ -15,7 +16,6 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::ops::DerefMut;
 use std::sync::Mutex;
-use tokio::sync::broadcast;
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
 pub struct GameId(u128);
@@ -214,7 +214,7 @@ impl GameManager {
         Ok(games)
     }
 
-    pub fn wait_for_update(&self, game_id: GameId) -> Result<broadcast::Receiver<()>> {
+    pub fn wait_for_update(&self, game_id: GameId) -> Result<Subscription> {
         Ok(GameManager::get_game_adapter_mutex(&self.games, game_id)?
             .lock()
             .unwrap()

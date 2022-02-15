@@ -6,7 +6,6 @@ use actix_web::web::Json;
 use actix_web::{get, post, web, Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::time::Duration;
 
 /* Helpers */
 
@@ -51,7 +50,7 @@ pub struct SubmitMoveRes {
 /// Struct for res from `/api/{game_id}/submit-move`
 #[derive(Serialize)]
 pub struct WaitForUpdateRes {
-    updated: bool,
+    clock: usize,
 }
 
 #[post("/api/create-game")]
@@ -133,16 +132,7 @@ pub(crate) async fn wait_for_update(
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<WaitForUpdateRes>> {
     let game_id = GameId::from(&game_id)?;
-    let timeout_duration = Duration::from_secs(5);
     Ok(Json(WaitForUpdateRes {
-        updated: match tokio::time::timeout(
-            timeout_duration,
-            gm_wrapped.wait_for_update(game_id)?.recv(),
-        )
-        .await
-        {
-            Ok(_) => true,
-            Err(_) => false,
-        },
+        clock: gm_wrapped.wait_for_update(game_id)?.wait().await?,
     }))
 }

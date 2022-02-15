@@ -1,11 +1,11 @@
 use crate::game::GameId;
+use crate::notify::Notifier;
 use actix_web::http::StatusCode;
 use actix_web::{ResponseError, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::vec::Vec;
-use tokio::sync::broadcast;
 
 #[derive(Debug, Clone, Display)]
 pub enum GameAdapterError {
@@ -58,7 +58,7 @@ pub trait GameAdapter: Send {
     fn new(game_id: GameId) -> Self
     where
         Self: Sized;
-    fn get_notifier(&self) -> &broadcast::Sender<()>;
+    fn get_notifier(&self) -> &Notifier;
     fn add_player(&mut self, username: String) -> Result<()>;
     fn has_player(&self, username: &str) -> bool;
     fn play_move(&mut self, game_move: GenericGameMove) -> Result<()>;
