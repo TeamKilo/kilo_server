@@ -194,7 +194,6 @@ impl Connect4 {
             return false;
         }
         let row = self.board.get(column).unwrap().len() - 1;
-        // let player = self.turn;
         let mut col_aux = column;
         let mut row_aux = row;
         let mut lenl = 0;
@@ -262,6 +261,8 @@ impl Connect4 {
             row_aux += 1;
         }
         ok = true;
+        row_aux = row;
+        col_aux = column;
         while (lenr < CONNECT_FOUR)
             && (col_aux < COL_SIZE)
             && (ok)
@@ -301,6 +302,8 @@ impl Connect4 {
                 ok = false;
             }
         }
+        row_aux = row;
+        col_aux = column;
         while (lenr < CONNECT_FOUR)
             && (col_aux < COL_SIZE)
             && (row_aux < ROW_SIZE)
