@@ -109,7 +109,7 @@ impl GameAdapter for Connect4Adapter {
             )); // return the one who made the request
         }
         self.game.moves(column)?;
-        let win = self.game.winning_move(column); //changed here
+        let win = self.game.winning_move(column);
         let draw = self.game.is_game_drawn();
         if win {
             self.winner.push(self.get_user_from_token());
@@ -223,7 +223,6 @@ impl Connect4 {
                 row_parser += direction_row[counter];
             }
         }
-        println!("{:?}", lengths);
         if lengths[0] >= CONNECT_FOUR as isize {
             return true;
         }
