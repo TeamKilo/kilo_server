@@ -1,5 +1,5 @@
 use crate::game::adapter::{
-    GameAdapter, GameAdapterError, GenericGameMove, GenericGameState, State,
+    GameAdapter, GameAdapterError, GameAdapterErrorType, GenericGameMove, GenericGameState, Stage,
 };
 use crate::game::GameId;
 use crate::notify::Notifier;
@@ -15,7 +15,7 @@ const CONNECT_FOUR: usize = 4;
 pub struct Connect4Adapter {
     game_id: GameId,
     players: Vec<String>,
-    state: State,
+    stage: Stage,
     notifier: Notifier,
     game: Connect4,
     winner: Vec<String>,
@@ -32,6 +32,7 @@ struct Connect4ResponsePayload<'a> {
 }
 
 struct Connect4 {
+    game_id: GameId,
     completed: bool,
     turn: Token,
     board: Vec<Vec<Token>>, // vector of columns, each variable length.
@@ -51,9 +52,10 @@ impl GameAdapter for Connect4Adapter {
         Connect4Adapter {
             game_id,
             players: vec![],
-            state: State::Waiting,
+            stage: Stage::Waiting,
             notifier: Notifier::new(),
             game: Connect4 {
+                game_id,
                 completed: false,
                 turn: Token::Red,
                 board: vec![vec![]; COL_SIZE],
@@ -67,15 +69,12 @@ impl GameAdapter for Connect4Adapter {
     }
 
     fn add_player(&mut self, username: String) -> actix_web::Result<()> {
-        if self.players.len() >= NUM_PLAYERS {
-            return Err(actix_web::Error::from(
-                GameAdapterError::PlayerLimitExceeded(NUM_PLAYERS),
-            ));
-        }
+        assert!(self.players.len() < NUM_PLAYERS);
+        assert_eq!(self.stage, Stage::InProgress);
 
         self.players.push(username);
         if self.players.len() == NUM_PLAYERS {
-            self.state = State::InProgress;
+            self.stage = Stage::InProgress;
         }
         self.notifier.send();
         Ok(())
@@ -86,13 +85,17 @@ impl GameAdapter for Connect4Adapter {
     }
 
     fn play_move(&mut self, game_move: GenericGameMove) -> actix_web::Result<()> {
-        if self.state == State::Waiting {
-            return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(
-                self.state,
-            )));
+        if self.stage == Stage::Waiting {
+            return Err(GameAdapterError::actix_err(
+                self.game_id,
+                GameAdapterErrorType::InvalidGameStage(self.stage),
+            ));
         }
-        if self.state == State::Ended {
-            return Err(actix_web::Error::from(GameAdapterError::GameEnded));
+        if self.stage == Stage::Ended {
+            return Err(GameAdapterError::actix_err(
+                self.game_id,
+                GameAdapterErrorType::InvalidGameStage(self.stage),
+            ));
         }
         let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload)?;
         let column = request_payload.column;
@@ -100,9 +103,10 @@ impl GameAdapter for Connect4Adapter {
         let user = game_move.player;
 
         if player != user {
-            return Err(actix_web::Error::from(GameAdapterError::InvalidPlayer(
-                user,
-            ))); // return the one who made the request
+            return Err(GameAdapterError::actix_err(
+                self.game_id,
+                GameAdapterErrorType::InvalidPlayer(user),
+            )); // return the one who made the request
         }
         self.game.moves(column)?;
         let win = self.game.winning_move(column);
@@ -112,12 +116,16 @@ impl GameAdapter for Connect4Adapter {
         }
         if win || draw {
             self.game.completed = true;
-            self.state = State::Ended;
+            self.stage = Stage::Ended;
         } else {
             self.game.switch_token();
         }
         self.notifier.send();
         Ok(())
+    }
+
+    fn get_stage(&self) -> Stage {
+        self.stage
     }
 
     fn get_encoded_state(&self) -> actix_web::Result<GenericGameState> {
@@ -144,8 +152,8 @@ impl GameAdapter for Connect4Adapter {
         Ok(GenericGameState {
             game: "connect_4".to_string(),
             players: self.players.clone(),
-            state: self.state,
-            can_move: if self.state == State::InProgress {
+            stage: self.stage,
+            can_move: if self.stage == Stage::InProgress {
                 vec![self.get_user_from_token()]
             } else {
                 vec![]
@@ -171,13 +179,15 @@ impl Connect4 {
 
     fn insert_move_if_legal(&mut self, column: usize) -> actix_web::Result<()> {
         if column >= COL_SIZE {
-            return Err(actix_web::Error::from(GameAdapterError::InvalidMove(
-                format!("column {} does not exist", column),
-            )));
+            return Err(GameAdapterError::actix_err(
+                self.game_id,
+                GameAdapterErrorType::InvalidMove(format!("column {} does not exist", column)),
+            ));
         } else if self.board.get(column).unwrap().len() >= ROW_SIZE {
-            return Err(actix_web::Error::from(GameAdapterError::InvalidMove(
-                format!("column {} is already full", column),
-            )));
+            return Err(GameAdapterError::actix_err(
+                self.game_id,
+                GameAdapterErrorType::InvalidMove(format!("column {} is already full", column)),
+            ));
         } else {
             self.board.get_mut(column).unwrap().push(self.turn);
         }
@@ -329,9 +339,10 @@ impl Connect4 {
 
     fn moves(&mut self, column: usize) -> actix_web::Result<()> {
         if self.completed {
-            return Err(actix_web::Error::from(GameAdapterError::InvalidGameState(
-                State::Ended,
-            )));
+            return Err(GameAdapterError::actix_err(
+                self.game_id,
+                GameAdapterErrorType::InvalidGameStage(Stage::Ended),
+            ));
         }
         self.insert_move_if_legal(column)?;
         Ok(())
