@@ -149,6 +149,7 @@ type GameAdapterMutex = Mutex<Box<dyn GameAdapter>>;
 #[derive(Serialize)]
 pub struct GameSummary {
     pub game_id: String,
+    pub game_type: String,
     pub players: Vec<String>,
     pub stage: String,
 }
@@ -259,6 +260,7 @@ impl GameManager {
                 let state = x.value().lock().unwrap().get_encoded_state().unwrap();
                 GameSummary {
                     game_id: x.key().to_string(),
+                    game_type: state.game,
                     players: state.players,
                     stage: state.stage.to_string(),
                 }
