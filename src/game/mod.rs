@@ -146,6 +146,13 @@ impl Session {
 
 type GameAdapterMutex = Mutex<Box<dyn GameAdapter>>;
 
+#[derive(Serialize)]
+pub struct GameSummary {
+    pub game_id: String,
+    pub players: Vec<String>,
+    pub stage: String,
+}
+
 pub struct GameManager {
     games: DashMap<GameId, Mutex<Box<dyn GameAdapter>>>,
     sessions: DashMap<SessionId, Session>,
@@ -245,12 +252,18 @@ impl GameManager {
             .get_encoded_state()
     }
 
-    pub fn list_games(&self) -> Result<Vec<String>> {
-        let mut games: Vec<String> = vec![];
-        for x in self.games.iter() {
-            games.push(x.key().to_string());
-        }
-        Ok(games)
+    pub fn list_games(&self) -> Vec<GameSummary> {
+        self.games
+            .iter()
+            .map(|x| {
+                let state = x.value().lock().unwrap().get_encoded_state().unwrap();
+                GameSummary {
+                    game_id: x.key().to_string(),
+                    players: state.players,
+                    stage: state.stage.to_string(),
+                }
+            })
+            .collect()
     }
 
     pub fn subscribe(&self, game_id: GameId) -> Result<Subscription> {
