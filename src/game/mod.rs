@@ -1,7 +1,9 @@
 pub mod adapter;
 pub mod connect4;
 
-use crate::game::adapter::{GameAdapter, GenericGameMove, GenericGameState};
+use crate::game::adapter::{
+    GameAdapter, GameAdapterError, GameAdapterErrorType, GenericGameMove, GenericGameState, Stage,
+};
 use crate::notify::Subscription;
 use actix_web::http::StatusCode;
 use actix_web::{Error, ResponseError, Result};
@@ -24,7 +26,7 @@ pub struct GameId([u8; 4]);
 pub struct SessionId([u8; 16]);
 
 fn new_parse_id_error(id: &String) -> Error {
-    actix_web::Error::from(GameManagerError::ParseIdError(id.clone()))
+    actix_web::Error::from(GameManagerError::InvalidId(id.clone()))
 }
 
 fn validate_id(id: &String, prefix: &str) -> Result<Vec<u8>, Error> {
@@ -87,18 +89,33 @@ impl fmt::Display for SessionId {
     }
 }
 
+const MAX_USERNAME_LENGTH: usize = 12;
+
+#[derive(Debug, Clone, Display)]
+pub enum InvalidUsernameReason {
+    #[display(fmt = "already in game {}", _0)]
+    AlreadyInGame(GameId),
+    #[display(fmt = "too short")]
+    TooShort,
+    #[display(fmt = "longer than {} characters", MAX_USERNAME_LENGTH)]
+    TooLong,
+}
+
 #[derive(Debug, Clone, Display)]
 pub enum GameManagerError {
     #[display(fmt = "invalid id: {}", _0)]
-    ParseIdError(String),
-    #[display(fmt = "game {} does not exist", _0)]
-    NoSuchGameError(String),
+    InvalidId(String),
+    #[display(fmt = "game type {} does not exist", _0)]
+    NoSuchGameType(String),
     #[display(fmt = "no game with id {}", _0)]
-    GameIdDoesNotExist(GameId),
+    GameNotFound(GameId),
     #[display(fmt = "no session with id {}", _0)]
-    SessionIdDoesNotExist(SessionId),
-    #[display(fmt = "username {} already in game with id {}", username, game_id)]
-    DuplicateUsername { username: String, game_id: GameId },
+    SessionNotFound(SessionId),
+    #[display(fmt = "invalid username ({}): {}", reason, username)]
+    InvalidUsername {
+        username: String,
+        reason: InvalidUsernameReason,
+    },
     #[display(fmt = "session {} does not match game id {}", session_id, game_id)]
     GameIdDoesNotMatch {
         game_id: GameId,
@@ -109,12 +126,9 @@ pub enum GameManagerError {
 impl ResponseError for GameManagerError {
     fn status_code(&self) -> StatusCode {
         match self {
-            GameManagerError::ParseIdError(_) => StatusCode::BAD_REQUEST,
-            GameManagerError::NoSuchGameError(_) => StatusCode::BAD_REQUEST,
-            GameManagerError::GameIdDoesNotExist(_) => StatusCode::NOT_FOUND,
-            GameManagerError::SessionIdDoesNotExist(_) => StatusCode::NOT_FOUND,
-            GameManagerError::DuplicateUsername { .. } => StatusCode::CONFLICT,
-            GameManagerError::GameIdDoesNotMatch { .. } => StatusCode::BAD_REQUEST,
+            GameManagerError::GameNotFound(_) => StatusCode::NOT_FOUND,
+            GameManagerError::SessionNotFound(_) => StatusCode::NOT_FOUND,
+            _ => StatusCode::BAD_REQUEST,
         }
     }
 }
@@ -158,10 +172,33 @@ impl GameManager {
         let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
         let mut mutex_guard = game_adapter_mutex.lock().unwrap();
         let game_adapter = mutex_guard.deref_mut();
-        if game_adapter.has_player(&username) {
-            return Err(actix_web::Error::from(
-                GameManagerError::DuplicateUsername { username, game_id },
+
+        if game_adapter.get_stage() != Stage::Waiting {
+            return Err(GameAdapterError::actix_err(
+                game_id,
+                GameAdapterErrorType::InvalidGameStage(game_adapter.get_stage()),
             ));
+        }
+
+        if username.is_empty() {
+            return Err(actix_web::Error::from(GameManagerError::InvalidUsername {
+                username,
+                reason: InvalidUsernameReason::TooShort,
+            }));
+        }
+
+        if username.len() > MAX_USERNAME_LENGTH {
+            return Err(actix_web::Error::from(GameManagerError::InvalidUsername {
+                username,
+                reason: InvalidUsernameReason::TooLong,
+            }));
+        }
+
+        if game_adapter.has_player(&username) {
+            return Err(actix_web::Error::from(GameManagerError::InvalidUsername {
+                username,
+                reason: InvalidUsernameReason::AlreadyInGame(game_id),
+            }));
         }
 
         game_adapter.add_player(username.clone())?;
@@ -230,9 +267,9 @@ impl GameManager {
     ) -> Result<Ref<GameId, GameAdapterMutex>> {
         match games.get(&game_id) {
             Some(x) => Ok(x),
-            None => Err(actix_web::Error::from(
-                GameManagerError::GameIdDoesNotExist(game_id),
-            )),
+            None => Err(actix_web::Error::from(GameManagerError::GameNotFound(
+                game_id,
+            ))),
         }
     }
 
@@ -242,9 +279,9 @@ impl GameManager {
     ) -> Result<Ref<SessionId, Session>> {
         match sessions.get(&session_id) {
             Some(x) => Ok(x),
-            None => Err(actix_web::Error::from(
-                GameManagerError::SessionIdDoesNotExist(session_id),
-            )),
+            None => Err(actix_web::Error::from(GameManagerError::SessionNotFound(
+                session_id,
+            ))),
         }
     }
 }

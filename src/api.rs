@@ -57,7 +57,7 @@ pub(crate) async fn create_game(
     let game_id = match payload.name.as_str() {
         "connect_4" => gm_wrapped.create_game(|id| Box::new(connect4::Connect4Adapter::new(id))),
         _ => {
-            return Err(Error::from(GameManagerError::NoSuchGameError(
+            return Err(Error::from(GameManagerError::NoSuchGameType(
                 payload.name.clone(),
             )))
         }
