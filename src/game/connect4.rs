@@ -70,7 +70,7 @@ impl GameAdapter for Connect4Adapter {
 
     fn add_player(&mut self, username: String) -> actix_web::Result<()> {
         assert!(self.players.len() < NUM_PLAYERS);
-        assert_eq!(self.stage, Stage::InProgress);
+        assert_eq!(self.stage, Stage::Waiting);
 
         self.players.push(username);
         if self.players.len() == NUM_PLAYERS {
