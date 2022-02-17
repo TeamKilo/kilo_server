@@ -17,7 +17,7 @@ fn format_invalid_game_stage(stage: &Stage) -> &'static str {
 
 #[derive(Debug, Clone, Display)]
 pub enum GameAdapterErrorType {
-    #[display(fmt = "user {} cannot move at the moment", _0)]
+    #[display(fmt = "player {} cannot move at the moment", _0)]
     InvalidPlayer(String),
     #[display(fmt = "invalid move: {}", _0)]
     InvalidMove(String),
@@ -60,7 +60,6 @@ pub enum Stage {
 
 #[derive(Serialize)]
 pub struct GenericGameState {
-    pub game: String,
     pub players: Vec<String>,
     pub can_move: Vec<String>,
     pub winners: Vec<String>,
@@ -85,4 +84,5 @@ pub trait GameAdapter: Send {
     fn get_stage(&self) -> Stage;
     fn get_encoded_state(&self) -> Result<GenericGameState>;
     fn get_user_from_token(&self) -> String;
+    fn get_type(&self) -> &str;
 }

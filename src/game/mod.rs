@@ -166,6 +166,7 @@ impl GameManager {
             sessions: DashMap::new(),
         }
     }
+
     pub fn create_game(&self, game: impl FnOnce(GameId) -> Box<dyn GameAdapter>) -> Result<GameId> {
         loop {
             let game_id = GameId::new();
@@ -247,20 +248,32 @@ impl GameManager {
     }
 
     pub fn get_state(&self, game_id: GameId) -> Result<GenericGameState> {
-        GameManager::get_game_adapter_mutex(&self.games, game_id)?
-            .lock()
-            .unwrap()
-            .get_encoded_state()
+        let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
+        let game_adapter = game_adapter_mutex.lock().unwrap();
+
+        let mut state = game_adapter.get_encoded_state()?;
+
+        if let serde_json::Value::Object(ref mut map) = state.payload {
+            map.insert(
+                String::from("game_type"),
+                serde_json::to_value(game_adapter.get_type()).unwrap(),
+            );
+
+            return Ok(state);
+        }
+
+        panic!()
     }
 
     pub fn list_games(&self) -> Vec<GameSummary> {
         self.games
             .iter()
             .map(|x| {
-                let state = x.value().lock().unwrap().get_encoded_state().unwrap();
+                let game_adapter = x.value().lock().unwrap();
+                let state = game_adapter.get_encoded_state().unwrap();
                 GameSummary {
                     game_id: x.key().to_string(),
-                    game_type: state.game,
+                    game_type: String::from(game_adapter.get_type()),
                     players: state.players,
                     stage: state.stage.to_string(),
                 }
