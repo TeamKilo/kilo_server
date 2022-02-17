@@ -173,8 +173,11 @@ impl GameAdapter for Connect4Adapter {
 }
 
 impl Connect4 {
-    fn get_cell_at(&self, row: usize, col: usize) -> Option<Token> {
-        Some(*self.board.get(col)?.get(row)?)
+    fn get_cell_at(&self, row: isize, col: isize) -> Option<Token> {
+        if row < 0 || col < 0 || row >= ROW_SIZE as isize || col >= COL_SIZE as isize {
+            return None;
+        }
+        Some(*self.board.get(col as usize)?.get(row as usize)?)
     }
 
     fn insert_move_if_legal(&mut self, column: usize) -> actix_web::Result<()> {
@@ -200,137 +203,35 @@ impl Connect4 {
             Token::Blue => Token::Red,
         };
     }
-
     fn winning_move(&mut self, column: usize) -> bool {
         if column >= COL_SIZE {
             return false;
         }
         let row = self.board.get(column).unwrap().len() - 1;
-        let mut col_aux = column;
-        let mut row_aux = row;
-        let mut lenl = 0;
-        let mut lenr = 0;
-        let mut ok = true;
-
-        //1.) Down
-        while (lenl < CONNECT_FOUR) && ok && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if row_aux > 0 {
-                row_aux -= 1;
-            } else {
-                ok = false;
+        let direction_col = vec![0, -1, 1, -1, 1, -1, 1]; // Down,Left,Right,LU ,RD, LD, RU
+        let direction_row = vec![-1, 0, 0, 1, -1, -1, 1];
+        let mut lengths = Vec::with_capacity(7);
+        let mut col_parser;
+        let mut row_parser;
+        lengths.resize(7, 0);
+        for counter in 0..7 {
+            col_parser = column as isize; // usize
+            row_parser = row as isize;
+            while self.get_cell_at(row_parser, col_parser) == Some(self.turn) {
+                lengths[counter] += 1;
+                col_parser += direction_col[counter];
+                row_parser += direction_row[counter];
             }
         }
-        if lenl >= CONNECT_FOUR {
+        if lengths[0] >= CONNECT_FOUR as isize {
             return true;
         }
-
-        //2.) Left + Right
-        lenl = 0;
-        row_aux = row;
-        col_aux = column;
-        ok = true;
-        while (lenl < CONNECT_FOUR)
-            && (ok)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if col_aux > 0 {
-                col_aux -= 1;
-            } else {
-                ok = false;
+        for pair in 0..3 {
+            if lengths[2 * pair + 1] + lengths[2 * pair + 2] > CONNECT_FOUR as isize {
+                return true;
             }
         }
-        col_aux = column + 1;
-        while (lenr < CONNECT_FOUR)
-            && (col_aux < COL_SIZE)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenr += 1;
-            col_aux += 1;
-        }
-        if lenl + lenr >= CONNECT_FOUR {
-            return true;
-        }
-
-        //3.) LeftUp + RightDown
-        lenl = 0;
-        lenr = 0;
-        row_aux = row;
-        col_aux = column;
-        ok = true;
-        while (lenl < CONNECT_FOUR)
-            && (ok)
-            && (row_aux < ROW_SIZE)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if col_aux > 0 {
-                col_aux -= 1;
-            } else {
-                ok = false;
-            }
-            row_aux += 1;
-        }
-
-        if row > 0 {
-            ok = true;
-            row_aux = row - 1;
-            col_aux = column + 1;
-            while (lenr < CONNECT_FOUR)
-                && (col_aux < COL_SIZE)
-                && (ok)
-                && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-            {
-                lenr += 1;
-                if row_aux > 0 {
-                    row_aux -= 1;
-                } else {
-                    ok = false;
-                }
-                col_aux += 1;
-            }
-        }
-
-        if lenl + lenr >= CONNECT_FOUR {
-            return true;
-        }
-
-        //4.) LeftDomn + RightUp
-        lenl = 0;
-        lenr = 0;
-        row_aux = row;
-        col_aux = column;
-        ok = true;
-        while (lenl < CONNECT_FOUR)
-            && (ok)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenl += 1;
-            if row_aux > 0 {
-                row_aux -= 1;
-            } else {
-                ok = false;
-            }
-            if col_aux > 0 {
-                col_aux -= 1;
-            } else {
-                ok = false;
-            }
-        }
-        row_aux = row + 1;
-        col_aux = column + 1;
-        while (lenr < CONNECT_FOUR)
-            && (col_aux < COL_SIZE)
-            && (row_aux < ROW_SIZE)
-            && (self.get_cell_at(row_aux, col_aux) == Some(self.turn))
-        {
-            lenr += 1;
-            col_aux += 1;
-            row_aux += 1;
-        }
-        lenl + lenr >= CONNECT_FOUR
+        false
     }
 
     fn is_game_drawn(&self) -> bool {
@@ -346,5 +247,124 @@ impl Connect4 {
         }
         self.insert_move_if_legal(column)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_Down() {
+        let mut game = Connect4 {
+            completed: false,
+            turn: Token::Red,
+            board: vec![vec![]; COL_SIZE],
+        };
+        game.insert_move_if_legal(0);
+        game.switch_token();
+        game.insert_move_if_legal(3);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        game.switch_token();
+        game.insert_move_if_legal(2);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        game.switch_token();
+        game.insert_move_if_legal(1);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        assert_eq!(game.winning_move(0), true);
+    }
+
+    #[test]
+    fn test_LandR() {
+        let mut game = Connect4 {
+            completed: false,
+            turn: Token::Red,
+            board: vec![vec![]; COL_SIZE],
+        };
+        game.insert_move_if_legal(3);
+        game.switch_token();
+        game.insert_move_if_legal(3);
+        game.switch_token();
+        game.insert_move_if_legal(2);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        game.switch_token();
+        game.insert_move_if_legal(1);
+        game.switch_token();
+        game.insert_move_if_legal(1);
+        game.switch_token();
+        game.insert_move_if_legal(4);
+        game.board.iter().for_each(|it| {
+            println!("{:#?}", it);
+        });
+        assert_eq!(game.winning_move(4), true);
+    }
+
+    #[test]
+    fn test_LUandRD() {
+        let mut game = Connect4 {
+            completed: false,
+            turn: Token::Red,
+            board: vec![vec![]; COL_SIZE],
+        };
+        game.insert_move_if_legal(2);
+        game.switch_token();
+        game.insert_move_if_legal(3);
+        game.switch_token();
+        game.insert_move_if_legal(1);
+        game.switch_token();
+        game.insert_move_if_legal(2);
+        game.switch_token();
+        game.insert_move_if_legal(1);
+        game.switch_token();
+        game.insert_move_if_legal(1);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        game.board.iter().for_each(|it| {
+            println!("{:#?}", it);
+        });
+        assert_eq!(game.winning_move(0), true);
+    }
+    #[test]
+    fn test_LDandRU() {
+        let mut game = Connect4 {
+            completed: false,
+            turn: Token::Red,
+            board: vec![vec![]; COL_SIZE],
+        };
+        game.insert_move_if_legal(2);
+        game.switch_token();
+        game.insert_move_if_legal(3);
+        game.switch_token();
+        game.insert_move_if_legal(3);
+        game.switch_token();
+        game.insert_move_if_legal(4);
+        game.switch_token();
+        game.insert_move_if_legal(4);
+        game.switch_token();
+        game.insert_move_if_legal(5);
+        game.switch_token();
+        game.insert_move_if_legal(4);
+        game.switch_token();
+        game.insert_move_if_legal(5);
+        game.switch_token();
+        game.insert_move_if_legal(0);
+        game.switch_token();
+        game.insert_move_if_legal(5);
+        game.switch_token();
+        game.insert_move_if_legal(5);
+        game.board.iter().for_each(|it| {
+            println!("{:#?}", it);
+        });
+        assert_eq!(game.winning_move(5), true);
     }
 }
