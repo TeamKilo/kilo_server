@@ -262,7 +262,7 @@ impl GameManager {
             return Ok(state);
         }
 
-        panic!()
+        panic!("State payload must be a Serde object")
     }
 
     pub fn list_games(&self) -> Vec<GameSummary> {
