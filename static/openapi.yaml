@@ -1,9 +1,9 @@
 openapi: 3.0.1
 info:
-  title: Kilo Games
+  title: Kilo API
   description: >
     The following is the API specification for
-    [Kilo Games](https://lucid-elion-c03750.netlify.app/)
+    [Kilo](https://kilo-games.netlify.app/)
   # termsOfService: http://swagger.io/terms/
   # contact:
   #   email: apiteam@swagger.io
