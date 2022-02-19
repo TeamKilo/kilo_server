@@ -323,7 +323,7 @@ paths:
           required: false
       responses:
         200:
-          description: Move successfully made
+          description: Clock exceeded `since` or request timed out
           content:
             application/json:
               schema:
