@@ -1,153 +1,135 @@
 pub mod adapter;
 pub mod connect4;
 
-use crate::game::adapter::{GenericGameMove, GenericGameState};
-use crate::game::ValidationError::ParseIdError;
+use crate::game::adapter::{
+    GameAdapter, GameAdapterError, GameAdapterErrorType, GenericGameMove, GenericGameState, Stage,
+};
+use crate::notify::Subscription;
 use actix_web::http::StatusCode;
 use actix_web::{Error, ResponseError, Result};
-use adapter::GameAdapter;
 use dashmap::mapref::entry::Entry;
 use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
+use derive_more::Display;
 use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::Formatter;
 use std::ops::DerefMut;
 use std::sync::Mutex;
-use tokio::sync::broadcast;
-
-/// ValidationError
-#[derive(Debug, Clone)]
-pub enum ValidationError {
-    ParseIdError(String),
-    NoSuchGameError(String),
-}
-
-impl Display for ValidationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            ValidationError::ParseIdError(id) => write!(f, "ID {} is Invalid", id),
-            ValidationError::NoSuchGameError(game) => write!(f, "Game {} not found", game),
-        }
-    }
-}
-
-impl ResponseError for ValidationError {
-    fn status_code(&self) -> StatusCode {
-        StatusCode::BAD_REQUEST
-    }
-}
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
-pub struct GameId(u128);
+pub struct GameId([u8; 4]);
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
-pub struct SessionId(u128);
+pub struct SessionId([u8; 16]);
+
+fn new_parse_id_error(id: &String) -> Error {
+    actix_web::Error::from(GameManagerError::InvalidId(id.clone()))
+}
+
+fn validate_id(id: &String, prefix: &str) -> Result<Vec<u8>, Error> {
+    if !id.starts_with(prefix) {
+        return Err(new_parse_id_error(id));
+    }
+
+    let base64 = &id[prefix.len()..];
+
+    base64::decode_config(base64, base64::URL_SAFE_NO_PAD).or(Err(new_parse_id_error(id)))
+}
 
 impl GameId {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
-        let id: u128 = rng.gen();
-        GameId(id)
-    }
-    // Added for API to create a GameId object to input to the GameManager
-    pub fn from(id: &String) -> Result<Self> {
-        GameId::validate_id(id).and_then(|id| Ok(GameId(id)))
+        let bytes: [u8; 4] = rng.gen();
+        GameId(bytes)
     }
 
-    /// validate_id
-    fn validate_id(game_id: &String) -> Result<u128, Error> {
-        if !game_id.starts_with("game_") {
-            return Err(actix_web::Error::from(ParseIdError(game_id.clone())));
-        }
-        let game_id_int = u128::from_str_radix(&game_id[5..], 10);
-        match game_id_int {
-            Ok(value) => Ok(value),
-            Err(_) => {
-                return Err(actix_web::Error::from(ValidationError::ParseIdError(
-                    game_id.clone(),
-                )))
-            } // TODO: need custom error
-        }
+    // Added for API to create a GameId object to input to the GameManager
+    pub fn from(id: &String) -> Result<Self> {
+        let vec = validate_id(id, "game_")?;
+        let bytes = TryInto::<[u8; 4]>::try_into(vec).or(Err(new_parse_id_error(id)))?;
+        Ok(GameId(bytes))
     }
 }
 
 impl fmt::Display for GameId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "game_{}", self.0)
+        write!(
+            f,
+            "game_{}",
+            base64::encode_config(self.0, base64::URL_SAFE_NO_PAD)
+        )
     }
 }
 
 impl SessionId {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
-        let id: u128 = rng.gen();
-        SessionId(id)
-    }
-    // Added for API to create a SessionId object
-    pub fn from(id: &String) -> Result<Self> {
-        SessionId::validate_id(id).and_then(|id| Ok(Self(id)))
+        let bytes: [u8; 16] = rng.gen();
+        SessionId(bytes)
     }
 
-    /// validate_id
-    fn validate_id(session_id: &String) -> Result<u128, Error> {
-        if !session_id.starts_with("session_") {
-            return Err(actix_web::Error::from(ParseIdError(session_id.clone())));
-        }
-        let session_id_int = u128::from_str_radix(&session_id[8..], 10);
-        match session_id_int {
-            Ok(value) => Ok(value),
-            Err(_) => {
-                return Err(actix_web::Error::from(ValidationError::ParseIdError(
-                    session_id.clone(),
-                )))
-            } // TODO: need custom error
-        }
+    // Added for API to create a SessionId object
+    pub fn from(id: &String) -> Result<Self> {
+        let vec = validate_id(id, "session_")?;
+        let bytes = TryInto::<[u8; 16]>::try_into(vec).or(Err(new_parse_id_error(id)))?;
+        Ok(SessionId(bytes))
     }
 }
 
 impl fmt::Display for SessionId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "session_{}", self.0)
+        write!(
+            f,
+            "session_{}",
+            base64::encode_config(self.0, base64::URL_SAFE_NO_PAD)
+        )
     }
 }
 
-#[derive(Debug, Clone)]
+const MAX_USERNAME_LENGTH: usize = 12;
+
+#[derive(Debug, Clone, Display)]
+pub enum InvalidUsernameReason {
+    #[display(fmt = "already in game {}", _0)]
+    AlreadyInGame(GameId),
+    #[display(fmt = "too short")]
+    TooShort,
+    #[display(fmt = "longer than {} characters", MAX_USERNAME_LENGTH)]
+    TooLong,
+}
+
+#[derive(Debug, Clone, Display)]
 pub enum GameManagerError {
-    GameIdDoesNotExist(GameId),
-    SessionIdDoesNotExist(SessionId),
-    DuplicateUsername { username: String, game_id: GameId },
-}
-
-impl fmt::Display for GameManagerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            GameManagerError::GameIdDoesNotExist(game_id) => {
-                write!(f, "Game corresponding to {} does not exist", game_id)
-            }
-            GameManagerError::SessionIdDoesNotExist(session_id) => {
-                write!(f, "Session corresponding to {} does not exist", session_id)
-            }
-            GameManagerError::DuplicateUsername { username, game_id } => {
-                write!(
-                    f,
-                    "Player with username {} already in game corresponding to {}",
-                    username, game_id
-                )
-            }
-        }
-    }
+    #[display(fmt = "invalid id: {}", _0)]
+    InvalidId(String),
+    #[display(fmt = "game type {} does not exist", _0)]
+    NoSuchGameType(String),
+    #[display(fmt = "no game with id {}", _0)]
+    GameNotFound(GameId),
+    #[display(fmt = "no session with id {}", _0)]
+    SessionNotFound(SessionId),
+    #[display(fmt = "invalid username ({}): {}", reason, username)]
+    InvalidUsername {
+        username: String,
+        reason: InvalidUsernameReason,
+    },
+    #[display(fmt = "session {} does not match game id {}", session_id, game_id)]
+    GameIdDoesNotMatch {
+        game_id: GameId,
+        session_id: SessionId,
+    },
 }
 
 impl ResponseError for GameManagerError {
     fn status_code(&self) -> StatusCode {
         match self {
-            GameManagerError::GameIdDoesNotExist(_) => StatusCode::NOT_FOUND,
-            GameManagerError::SessionIdDoesNotExist(_) => StatusCode::NOT_FOUND,
-            GameManagerError::DuplicateUsername { .. } => StatusCode::CONFLICT,
+            GameManagerError::GameNotFound(_) => StatusCode::NOT_FOUND,
+            GameManagerError::SessionNotFound(_) => StatusCode::NOT_FOUND,
+            _ => StatusCode::BAD_REQUEST,
         }
     }
 }
@@ -165,6 +147,14 @@ impl Session {
 
 type GameAdapterMutex = Mutex<Box<dyn GameAdapter>>;
 
+#[derive(Serialize)]
+pub struct GameSummary {
+    pub game_id: String,
+    pub game_type: String,
+    pub players: Vec<String>,
+    pub stage: String,
+}
+
 pub struct GameManager {
     games: DashMap<GameId, Mutex<Box<dyn GameAdapter>>>,
     sessions: DashMap<SessionId, Session>,
@@ -177,7 +167,6 @@ impl GameManager {
             sessions: DashMap::new(),
         }
     }
-
     pub fn create_game(&self, game: impl FnOnce(GameId) -> Box<dyn GameAdapter>) -> Result<GameId> {
         loop {
             let game_id = GameId::new();
@@ -192,10 +181,33 @@ impl GameManager {
         let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
         let mut mutex_guard = game_adapter_mutex.lock().unwrap();
         let game_adapter = mutex_guard.deref_mut();
-        if game_adapter.has_player(&username) {
-            return Err(actix_web::Error::from(
-                GameManagerError::DuplicateUsername { username, game_id },
+
+        if game_adapter.get_stage() != Stage::Waiting {
+            return Err(GameAdapterError::actix_err(
+                game_id,
+                GameAdapterErrorType::InvalidGameStage(game_adapter.get_stage()),
             ));
+        }
+
+        if username.is_empty() {
+            return Err(actix_web::Error::from(GameManagerError::InvalidUsername {
+                username,
+                reason: InvalidUsernameReason::TooShort,
+            }));
+        }
+
+        if username.len() > MAX_USERNAME_LENGTH {
+            return Err(actix_web::Error::from(GameManagerError::InvalidUsername {
+                username,
+                reason: InvalidUsernameReason::TooLong,
+            }));
+        }
+
+        if game_adapter.has_player(&username) {
+            return Err(actix_web::Error::from(GameManagerError::InvalidUsername {
+                username,
+                reason: InvalidUsernameReason::AlreadyInGame(game_id),
+            }));
         }
 
         game_adapter.add_player(username.clone())?;
@@ -210,9 +222,23 @@ impl GameManager {
         }
     }
 
-    pub fn receive_move(&self, session_id: SessionId, encoded_move: Value) -> Result<()> {
+    pub fn receive_move(
+        &self,
+        game_id: GameId,
+        session_id: SessionId,
+        encoded_move: Value,
+    ) -> Result<()> {
         let session = GameManager::get_session(&self.sessions, session_id)?;
-        let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, session.game_id)?;
+        if session.game_id != game_id {
+            return Err(actix_web::Error::from(
+                GameManagerError::GameIdDoesNotMatch {
+                    game_id,
+                    session_id,
+                },
+            ));
+        }
+
+        let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
         let mut game_adapter = game_adapter_mutex.lock().unwrap();
 
         game_adapter.play_move(GenericGameMove {
@@ -228,15 +254,22 @@ impl GameManager {
             .get_encoded_state()
     }
 
-    pub fn list_games(&self) -> Result<Vec<String>> {
-        let mut games: Vec<String> = vec![];
-        for x in self.games.iter() {
-            games.push(x.key().to_string());
-        }
-        Ok(games)
+    pub fn list_games(&self) -> Vec<GameSummary> {
+        self.games
+            .iter()
+            .map(|x| {
+                let state = x.value().lock().unwrap().get_encoded_state().unwrap();
+                GameSummary {
+                    game_id: x.key().to_string(),
+                    game_type: state.game,
+                    players: state.players,
+                    stage: state.stage.to_string(),
+                }
+            })
+            .collect()
     }
 
-    pub fn wait_for_update(&self, game_id: GameId) -> Result<broadcast::Receiver<()>> {
+    pub fn subscribe(&self, game_id: GameId) -> Result<Subscription> {
         Ok(GameManager::get_game_adapter_mutex(&self.games, game_id)?
             .lock()
             .unwrap()
@@ -268,9 +301,9 @@ impl GameManager {
     ) -> Result<Ref<GameId, GameAdapterMutex>> {
         match games.get(&game_id) {
             Some(x) => Ok(x),
-            None => Err(actix_web::Error::from(
-                GameManagerError::GameIdDoesNotExist(game_id),
-            )),
+            None => Err(actix_web::Error::from(GameManagerError::GameNotFound(
+                game_id,
+            ))),
         }
     }
 
@@ -280,9 +313,9 @@ impl GameManager {
     ) -> Result<Ref<SessionId, Session>> {
         match sessions.get(&session_id) {
             Some(x) => Ok(x),
-            None => Err(actix_web::Error::from(
-                GameManagerError::SessionIdDoesNotExist(session_id),
-            )),
+            None => Err(actix_web::Error::from(GameManagerError::SessionNotFound(
+                session_id,
+            ))),
         }
     }
 }
