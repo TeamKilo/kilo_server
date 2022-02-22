@@ -14,15 +14,23 @@ use derive_more::Display;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fmt;
-use std::fmt::Formatter;
 use std::ops::DerefMut;
 use std::sync::Mutex;
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
+fn encode_id(bytes: &[u8]) -> String {
+    base32::encode(base32::Alphabet::RFC4648 { padding: false }, bytes)
+}
+
+fn decode_id(data: &str) -> Option<Vec<u8>> {
+    base32::decode(base32::Alphabet::RFC4648 { padding: false }, data)
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Display)]
+#[display(fmt = "game_{}", "encode_id(_0)")]
 pub struct GameId([u8; 4]);
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Display)]
+#[display(fmt = "session_{}", "encode_id(_0)")]
 pub struct SessionId([u8; 16]);
 
 fn new_parse_id_error(id: &String) -> Error {
@@ -34,16 +42,12 @@ fn validate_id(id: &String, prefix: &str) -> Result<Vec<u8>, Error> {
         return Err(new_parse_id_error(id));
     }
 
-    let base64 = &id[prefix.len()..];
-
-    base64::decode_config(base64, base64::URL_SAFE_NO_PAD).or(Err(new_parse_id_error(id)))
+    decode_id(&id[prefix.len()..]).ok_or(new_parse_id_error(id))
 }
 
 impl GameId {
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let bytes: [u8; 4] = rng.gen();
-        GameId(bytes)
+        GameId(rand::thread_rng().gen())
     }
 
     // Added for API to create a GameId object to input to the GameManager
@@ -54,21 +58,9 @@ impl GameId {
     }
 }
 
-impl fmt::Display for GameId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "game_{}",
-            base64::encode_config(self.0, base64::URL_SAFE_NO_PAD)
-        )
-    }
-}
-
 impl SessionId {
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let bytes: [u8; 16] = rng.gen();
-        SessionId(bytes)
+        SessionId(rand::thread_rng().gen())
     }
 
     // Added for API to create a SessionId object
@@ -76,16 +68,6 @@ impl SessionId {
         let vec = validate_id(id, "session_")?;
         let bytes = TryInto::<[u8; 16]>::try_into(vec).or(Err(new_parse_id_error(id)))?;
         Ok(SessionId(bytes))
-    }
-}
-
-impl fmt::Display for SessionId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "session_{}",
-            base64::encode_config(self.0, base64::URL_SAFE_NO_PAD)
-        )
     }
 }
 

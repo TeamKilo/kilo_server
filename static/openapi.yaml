@@ -344,7 +344,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/GameTypeBase'
         - enum:
-            - connect4
+            - connect_4
     GameId:
       type: string
       example: game_585ezA
@@ -394,7 +394,7 @@ components:
         game_type:
           allOf:
             - $ref: '#/components/schemas/GameTypeBase'
-            - enum: [ 'connect4' ]
+            - enum: [ 'connect_4' ]
         cells:
           type: array
           items:
@@ -428,7 +428,7 @@ components:
         game_type:
           allOf:
             - $ref: '#/components/schemas/GameTypeBase'
-            - enum: [ 'connect4' ]
+            - enum: [ 'connect_4' ]
         column:
           type: integer
           minimum: 1
@@ -441,7 +441,7 @@ components:
     InvalidId:
       type: string
       pattern: '^invalid id:'
-      example: 'invalid id: gmae_585ezA'
+      example: 'invalid id: game_585ezA'
     GameNotFound:
       type: string
       pattern: ^game game_.+ does not exist$
