@@ -4,14 +4,9 @@ Backend for [Kilo](https://kilo-games.netlify.app/), a website for creating bots
 
 ## API
 
-<!--
 The API is specified with OpenAPI 3.0 in [static/openapi.yaml](./static/openapi.yaml).
 
 API documentation can be found at [kilo-games.netlify.app/docs](https://kilo-games.netlify.app/docs).
-
--->
-
-TODO
 
 ## Games
 
@@ -33,7 +28,7 @@ TODO
 - [Actix](https://actix.rs/) (for endpoints)
 - [Serde](https://serde.rs/) (for serialization)
 - [Tokio](https://tokio.rs/) (for async I/O)
-<!-- - [OpenAPI 3.0](https://spec.openapis.org/oas/v3.0.1) for API specification -->
+- [OpenAPI 3.0](https://spec.openapis.org/oas/v3.0.1) for API specification
 
 ## Other projects
 
@@ -42,7 +37,10 @@ TODO
 
 ## Authors
 
-TODO
+- [Razvi](https://github.com/Razvi28)
+- [Vincent](https://github.com/konsolas)
+- [Theo](https://github.com/MilkFansHelloWorld)
+- [Jonathan](https://github.com/jonathanjameswatson)
 
 ## License
 
