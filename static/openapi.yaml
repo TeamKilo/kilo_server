@@ -342,14 +342,14 @@ components:
             - connect_4
     GameId:
       type: string
-      example: game_585ezA
+      example: game_NF6G5NI
       description: ID of a game
-      pattern: ^game_
+      pattern: game_[A-Z0-9]+
     SessionId:
       type: string
-      example: session_kRNF7Ppi7eT_QqumOGuqbw
+      example: session_AOHL56GENZPMVKFHA2LD5MOYRA
       description: ID of a session
-      pattern: ^session_
+      pattern: session_[A-Z0-9]+
     Username:
       type: string
       minLength: 1
@@ -431,44 +431,44 @@ components:
       description: Payload for a connect 4 game move
     NoSuchGameType:
       type: string
-      pattern: ^game type .+ does not exist$
-      example: game type connect_minus_4 does not exist
+      pattern: '^game type .+ does not exist$'
+      example: 'game type connect_minus_4 does not exist'
     InvalidId:
       type: string
       pattern: '^invalid id:'
-      example: 'invalid id: game_585ezA'
+      example: 'invalid id: game_NF6G5NI'
     GameNotFound:
       type: string
-      pattern: ^game game_.+ does not exist$
-      example: 'game game_585ezA does not exist'
+      pattern: '^game game_[A-Z0-9]+ does not exist$'
+      example: 'game game_NF6G5NI does not exist'
     SessionNotFound:
       type: string
-      pattern: ^session session_.+ does not exist$
-      example: 'session session_kRNF7Ppi7eT_QqumOGuqbw does not exist'
+      pattern: '^session session_[A-Z0-9]+ does not exist$'
+      example: 'session session_AOHL56GENZPMVKFHA2LD5MOYRA does not exist'
     InvalidUsername:
       type: string
-      pattern: '^invalid username \((already in game game_\d+|too short|longer than 12 characters)\): .*$'
+      pattern: '^invalid username \((already in game game_[A-Z0-9]+|too short|longer than 12 characters)\): .*$'
       example: 'invalid username (already in game): Player 1'
     GameWaiting:
       type: string
-      pattern: '^game has not started yet (game_\d+)$'
-      example: game has not started yet (game_585ezA)
+      pattern: '^game has not started yet (game_[A-Z0-9]+)$'
+      example: 'game has not started yet (game_NF6G5NI)'
     GameInProgress:
       type: string
-      pattern: '^game has already started (game_\d+)$'
-      example: game has already started (game_585ezA)
+      pattern: '^game has already started (game_[A-Z0-9]+)$'
+      example: 'game has already started (game_NF6G5NI)'
     GameEnded:
       type: string
-      pattern: '^game game_\d+ has already ended (game_\d+)$'
-      example: game has already ended (game_585ezA)
+      pattern: '^game game_[A-Z0-9]+ has already ended (game_[A-Z0-9]+)$'
+      example: 'game has already ended (game_NF6G5NI)'
     InvalidMove:
       type: string
-      pattern: '^invalid move: .* (game_\d+)$'
-      example: 'invalid move: column 3 is already full (game_585ezA)'
+      pattern: '^invalid move: .* (game_[A-Z0-9]+)$'
+      example: 'invalid move: column 3 is already full (game_NF6G5NI)'
     InvalidPlayer:
       type: string
-      pattern: '^player .+ cannot move at the moment (game_\d+)$'
-      example: 'player Player 1 cannot move at the moment (game_585ezA)'
+      pattern: '^player .+ cannot move at the moment (game_[A-Z0-9]+)$'
+      example: 'player Player 1 cannot move at the moment (game_NF6G5NI)'
   links:
     GameIdJoinGame:
       operationId: joinGame
