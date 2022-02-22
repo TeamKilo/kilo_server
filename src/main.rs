@@ -27,6 +27,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Cors::permissive())
             .app_data(game_manager.clone())
             .app_data(json_config.clone())
+            .service(actix_files::Files::new("/static", "./static").show_files_listing())
             .service(api::create_game)
             .service(api::list_games)
             .service(api::join_game)

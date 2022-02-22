@@ -1,0 +1,505 @@
+openapi: 3.0.1
+info:
+  title: Kilo API
+  description: >
+    The following is the API specification for
+    [Kilo](https://kilo-games.netlify.app/)
+  # termsOfService: http://swagger.io/terms/
+  # contact:
+  #   email: apiteam@swagger.io
+  license:
+    name: Dual MIT/Apache 2.0
+    url: https://github.com/TeamKilo/kilo_server/search?q=LICENSE
+  version: 0.1.0
+servers:
+  - url: https://team-kilo-server.herokuapp.com/api
+tags:
+  - name: Game management
+    description: Game creation and searching
+  - name: Game
+    description: Game viewing and playing
+paths:
+  /create-game:
+    post:
+      tags:
+        - Game management
+      summary: Create a game
+      description: Create a game given a type of game
+      operationId: createGame
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - game_type
+              type: object
+              properties:
+                game_type:
+                  $ref: '#/components/schemas/GameType'
+        required: true
+      responses:
+        200:
+          description: Game successfully added
+          content:
+            application/json:
+              schema:
+                required:
+                  - game_id
+                type: object
+                properties:
+                  game_id:
+                    $ref: '#/components/schemas/GameId'
+          links:
+            Join game:
+              $ref: '#/components/links/GameIdJoinGame'
+            Get state:
+              $ref: '#/components/links/GameIdGetState'
+            Submit move:
+              $ref: '#/components/links/GameIdSubmitMove'
+        404:
+          description: Game type not found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/NoSuchGameType'
+  /list-games:
+    get:
+      tags:
+        - Game management
+      summary: List existing games
+      description: List the ID, game type, players and stage of each existing game
+      operationId: listGames
+      responses:
+        200:
+          description: A list of IDs, players and stages of existing games
+          content:
+            application/json:
+              schema:
+                required:
+                  - game_summaries
+                type: object
+                properties:
+                  game_summaries:
+                    type: array
+                    items:
+                      allOf:
+                        - type: object
+                          required:
+                            - game_id
+                            - game_type
+                          properties:
+                            game_id:
+                              $ref: '#/components/schemas/GameId'
+                            game_type:
+                              $ref: '#/components/schemas/GameType'
+                        - $ref: '#/components/schemas/GameSummaryBase'
+  /{game_id}/join-game:
+    post:
+      tags:
+        - Game
+      summary: Join a game
+      description: Attempt to join a game, creating a session
+      operationId: joinGame
+      parameters:
+        - in: path
+          name: game_id
+          schema:
+            $ref: '#/components/schemas/GameId'
+          required: true
+          description: ID of a game
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - username
+              type: object
+              properties:
+                username:
+                  $ref: '#/components/schemas/Username'
+        required: true
+      responses:
+        200:
+          description: Session successfully created
+          content:
+            application/json:
+              schema:
+                required:
+                  - session_id
+                type: object
+                properties:
+                  session_id:
+                    $ref: '#/components/schemas/SessionId'
+          links:
+            Submit move:
+              $ref: '#/components/links/SessionIdSubmitMove'
+        400:
+          description: >
+            Game ID is invalid, username is invalid or game has already started
+          content:
+            text/plain:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/InvalidId'
+                  - $ref: '#/components/schemas/InvalidUsername'
+                  - $ref: '#/components/schemas/GameInProgress'
+        404:
+          description: Game not found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/GameNotFound'
+  /{game_id}/get-state:
+    get:
+      tags:
+        - Game
+      summary: Get a game's state
+      description: >
+        Get a game's state, including the current players, the stage, the
+        players that have won so far, the type of the game and a
+        game-specific payload with additional information
+      operationId: getState
+      parameters:
+        - in: path
+          name: game_id
+          schema:
+            $ref: '#/components/schemas/GameId'
+          required: true
+          description: ID of a game
+      responses:
+        200:
+          description: The game's state
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/GameSummaryBase'
+                  - type: object
+                    required:
+                      - can_move
+                      - winners
+                      - game_name
+                      - payload
+                    properties:
+                      players:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Username'
+                        description: The usernames of players currently in the game
+                        example:
+                          - Player 1
+                          - Player 2
+                      stage:
+                        type: string
+                        enum:
+                          - waiting
+                          - in_progress
+                          - ended
+                        description: >
+                          Whether the game is waiting for players, in progress or
+                          over
+                        example: in_progress
+                      can_move:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Username'
+                        description: >
+                          Usernames from `players` that can use
+                          `POST /{game_id}/submit-move/`
+                      winners:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Username'
+                        description: >
+                          Usernames from `players` that are winners
+                          (this is empty if there is a draw)
+                        example: [ ]
+                      payload:
+                        oneOf:
+                          - $ref: '#/components/schemas/Connect4Request'
+                        discriminator:
+                          propertyName: game_type
+        400:
+          description: Game ID is invalid
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/InvalidId'
+        404:
+          description: Game not found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/GameNotFound'
+  /{game_id}/submit-move:
+    post:
+      tags:
+        - Game
+      summary: Submit a move
+      description: >
+        Attempt to submit a player's move in a game
+      operationId: submitMove
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - session_id
+                - payload
+              type: object
+              properties:
+                session_id:
+                  $ref: '#/components/schemas/SessionId'
+                payload:
+                  oneOf:
+                    - $ref: '#/components/schemas/Connect4Response'
+                  discriminator:
+                    propertyName: game_type
+        required: true
+      parameters:
+        - in: path
+          name: game_id
+          schema:
+            $ref: '#/components/schemas/GameId'
+          required: true
+          description: ID of a game
+      responses:
+        200:
+          description: Move successfully made
+          content:
+            application/json:
+              schema:
+                required:
+                  - clock
+                type: object
+                properties:
+                  clock:
+                    $ref: '#/components/schemas/SessionId'
+        400:
+          description: >
+            Game or session ID is invalid, game is not in progress,
+            session does not match game, move is invalid or player cannot
+            currently move
+          content:
+            text/plain:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/InvalidId'
+                  - $ref: '#/components/schemas/GameWaiting'
+                  - $ref: '#/components/schemas/GameEnded'
+                  - $ref: '#/components/schemas/InvalidMove'
+                  - $ref: '#/components/schemas/InvalidPlayer'
+        404:
+          description: Game or session not found
+          content:
+            text/plain:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GameNotFound'
+                  - $ref: '#/components/schemas/SessionNotFound'
+  /{game_id}/wait-for-update:
+    get:
+      tags:
+        - Game
+      summary: Wait for update
+      description: >
+        Receive a response when the clock exceeds the given value
+        (defaulting to the current clock value) or the request times out
+      operationId: waitForUpdate
+      parameters:
+        - in: path
+          name: game_id
+          schema:
+            $ref: '#/components/schemas/GameId'
+          required: true
+          description: ID of a game
+        - in: query
+          name: since
+          schema:
+            type: integer
+          description: >
+            The clock value that must be exceeded for a non-timeout
+            response (defaults to the current clock value)
+          required: false
+      responses:
+        200:
+          description: Clock exceeded `since` or request timed out
+          content:
+            application/json:
+              schema:
+                required:
+                  - clock
+                type: object
+                properties:
+                  clock:
+                    type: integer
+                    description: The current clock value at the server
+components:
+  schemas:
+    GameTypeBase:
+      type: string
+      example: connect_4
+      description: Type of game
+    GameType:
+      allOf:
+        - $ref: '#/components/schemas/GameTypeBase'
+        - enum:
+            - connect4
+    GameId:
+      type: string
+      example: game_585ezA
+      description: ID of a game
+      pattern: ^game_
+    SessionId:
+      type: string
+      example: session_kRNF7Ppi7eT_QqumOGuqbw
+      description: ID of a session
+      pattern: ^session_
+    Username:
+      type: string
+      minLength: 1
+      maxLength: 12
+      example: Player 1
+      description: Name of a player
+    GameSummaryBase:
+      type: object
+      required:
+        - players
+        - stage
+      properties:
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Username'
+          description: The usernames of players currently in the game
+          example:
+            - Player 1
+            - Player 2
+        stage:
+          type: string
+          enum:
+            - waiting
+            - in_progress
+            - ended
+          description: >
+            Whether the game is waiting for players, in progress or
+            over
+          example: in_progress
+    Connect4Request:
+      type: object
+      required:
+        - game_type
+        - cells
+      properties:
+        game_type:
+          allOf:
+            - $ref: '#/components/schemas/GameTypeBase'
+            - enum: [ 'connect4' ]
+        cells:
+          type: array
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/Username'
+            description: >
+              A column from a connect 4 game, with tokens being
+              represented by the usernames of the players who
+              placed them and the bottom token being the
+              leftmost
+            maxItems: 6
+          description: An array of a connect 4 game's columns
+          minItems: 7
+          maxItems: 7
+          example:
+            - [ ]
+            - [ "Player 1", "Player 2" ]
+            - [ "Player 2" ]
+            - [ "Player 1" ]
+            - [ ]
+            - [ ]
+            - [ ]
+      description: Payload for a connect 4 game's state
+    Connect4Response:
+      type: object
+      required:
+        - game_type
+        - column
+      properties:
+        game_type:
+          allOf:
+            - $ref: '#/components/schemas/GameTypeBase'
+            - enum: [ 'connect4' ]
+        column:
+          type: integer
+          minimum: 1
+          maximum: 7
+      description: Payload for a connect 4 game move
+    NoSuchGameType:
+      type: string
+      pattern: ^game type .+ does not exist$
+      example: game type connect_minus_4 does not exist
+    InvalidId:
+      type: string
+      pattern: '^invalid id:'
+      example: 'invalid id: gmae_585ezA'
+    GameNotFound:
+      type: string
+      pattern: ^game game_.+ does not exist$
+      example: 'game game_585ezA does not exist'
+    SessionNotFound:
+      type: string
+      pattern: ^session session_.+ does not exist$
+      example: 'session session_kRNF7Ppi7eT_QqumOGuqbw does not exist'
+    InvalidUsername:
+      type: string
+      pattern: '^invalid username \((already in game game_\d+|too short|longer than 12 characters)\): .*$'
+      example: 'invalid username (already in game): Player 1'
+    GameWaiting:
+      type: string
+      pattern: '^game has not started yet (game_\d+)$'
+      example: game has not started yet (game_585ezA)
+    GameInProgress:
+      type: string
+      pattern: '^game has already started (game_\d+)$'
+      example: game has already started (game_585ezA)
+    GameEnded:
+      type: string
+      pattern: '^game game_\d+ has already ended (game_\d+)$'
+      example: game has already ended (game_585ezA)
+    InvalidMove:
+      type: string
+      pattern: '^invalid move: .* (game_\d+)$'
+      example: 'invalid move: column 3 is already full (game_585ezA)'
+    InvalidPlayer:
+      type: string
+      pattern: '^player .+ cannot move at the moment (game_\d+)$'
+      example: 'player Player 1 cannot move at the moment (game_585ezA)'
+  links:
+    GameIdJoinGame:
+      operationId: joinGame
+      parameters:
+        game_id: '$response.body#/game_id'
+      description: >
+        The `game_id` value returned in the response can be used as
+        the `game_id` parameter in `POST /{game_id}/join-game`
+    GameIdGetState:
+      operationId: getState
+      parameters:
+        game_id: '$response.body#/game_id'
+      description: >
+        The `game_id` value returned in the response can be used as
+        the `game_id` parameter in `GET /{game_id}/get-state`
+    GameIdSubmitMove:
+      operationId: submitMove
+      parameters:
+        game_id: '$response.body#/game_id'
+      description: >
+        The `game_id` value returned in the response can be used as
+        the `game_id` parameter in `POST /{game_id}/submit-move/`
+    SessionIdSubmitMove:
+      operationId: submitMove
+      x-apigraph-requestBodyParameters:
+        /session_id: '$response.body#/session_id'
+      description: >
+        The `session_id` value returned in the response can be used as
+        the `session_id` field in `POST /{game_id}/submit-move/`
