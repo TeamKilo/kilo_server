@@ -75,24 +75,19 @@ paths:
           content:
             application/json:
               schema:
-                required:
-                  - game_summaries
-                type: object
-                properties:
-                  game_summaries:
-                    type: array
-                    items:
-                      allOf:
-                        - type: object
-                          required:
-                            - game_id
-                            - game_type
-                          properties:
-                            game_id:
-                              $ref: '#/components/schemas/GameId'
-                            game_type:
-                              $ref: '#/components/schemas/GameType'
-                        - $ref: '#/components/schemas/GameSummaryBase'
+                type: array
+                items:
+                  allOf:
+                    - type: object
+                      required:
+                        - game_id
+                        - game_type
+                      properties:
+                        game_id:
+                          $ref: '#/components/schemas/GameId'
+                        game_type:
+                          $ref: '#/components/schemas/GameType'
+                    - $ref: '#/components/schemas/GameSummaryBase'
   /{game_id}/join-game:
     post:
       tags:
