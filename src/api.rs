@@ -11,7 +11,7 @@ use serde_json::Value;
 
 #[derive(Deserialize)]
 pub struct CreateGameReq {
-    name: String,
+    game_type: String,
 }
 
 #[derive(Serialize)]
@@ -24,11 +24,11 @@ pub(crate) async fn create_game(
     payload: web::Json<CreateGameReq>,
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<CreateGameRes>> {
-    let game_id = match payload.name.as_str() {
+    let game_id = match payload.game_type.as_str() {
         "connect_4" => gm_wrapped.create_game(|id| Box::new(connect4::Connect4Adapter::new(id))),
         _ => {
             return Err(Error::from(GameManagerError::NoSuchGameType(
-                payload.name.clone(),
+                payload.game_type.clone(),
             )))
         }
     };

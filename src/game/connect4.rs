@@ -23,6 +23,7 @@ pub struct Connect4Adapter {
 
 #[derive(Deserialize)]
 struct Connect4RequestPayload {
+    game_type: String,
     column: usize,
 }
 
@@ -150,7 +151,6 @@ impl GameAdapter for Connect4Adapter {
             cells: encoded_board,
         };
         Ok(GenericGameState {
-            game: "connect_4".to_string(),
             players: self.players.clone(),
             stage: self.stage,
             can_move: if self.stage == Stage::InProgress {
@@ -169,6 +169,10 @@ impl GameAdapter for Connect4Adapter {
             Token::Blue => self.players.get(1).unwrap().clone(),
         };
         user
+    }
+
+    fn get_type(&self) -> &str {
+        "connect_4"
     }
 }
 
