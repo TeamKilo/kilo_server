@@ -4,6 +4,7 @@ use derive_more::Display;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::sync::broadcast;
+use tokio::sync::broadcast::TryRecvError;
 use tokio::time::timeout;
 
 #[derive(Debug, Display, Clone)]
@@ -58,6 +59,14 @@ impl Subscription {
                 Ok(Err(_)) => Err(Error::from(NotifierError {})),
                 Err(_) => Ok(self.clock),
             }
+        }
+    }
+
+    pub fn did_update(&mut self) -> actix_web::Result<bool> {
+        match self.receiver.try_recv() {
+            Ok(_) => Ok(true),
+            Err(TryRecvError::Empty) => Ok(false),
+            Err(_) => Err(Error::from(NotifierError {})),
         }
     }
 }

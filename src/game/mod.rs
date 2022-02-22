@@ -1,6 +1,7 @@
 pub mod adapter;
 pub mod connect4;
 
+use std::collections::HashMap;
 use crate::game::adapter::{
     GameAdapter, GameAdapterError, GameAdapterErrorType, GenericGameMove, GenericGameState, Stage,
 };
@@ -8,7 +9,6 @@ use crate::notify::Subscription;
 use actix_web::http::StatusCode;
 use actix_web::{Error, ResponseError, Result};
 use dashmap::mapref::entry::Entry;
-use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
 use derive_more::Display;
 use rand::Rng;
@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ops::DerefMut;
 use std::sync::Mutex;
+use chrono::{Duration, DateTime, Utc};
 
 fn encode_id(bytes: &[u8]) -> String {
     base32::encode(base32::Alphabet::RFC4648 { padding: false }, bytes)
@@ -98,11 +99,6 @@ pub enum GameManagerError {
         username: String,
         reason: InvalidUsernameReason,
     },
-    #[display(fmt = "session {} does not match game id {}", session_id, game_id)]
-    GameIdDoesNotMatch {
-        game_id: GameId,
-        session_id: SessionId,
-    },
 }
 
 impl ResponseError for GameManagerError {
@@ -117,16 +113,19 @@ impl ResponseError for GameManagerError {
 
 pub struct Session {
     username: String,
-    game_id: GameId,
 }
 
 impl Session {
-    pub fn new(username: String, game_id: GameId) -> Self {
-        Session { username, game_id }
+    pub fn new(username: String) -> Self {
+        Session { username }
     }
 }
 
-type GameAdapterMutex = Mutex<Box<dyn GameAdapter>>;
+pub struct Game {
+    adapter: Box<dyn GameAdapter>,
+    sessions: HashMap<SessionId, Session>,
+    last_update: DateTime<Utc>,
+}
 
 #[derive(Serialize)]
 pub struct GameSummary {
@@ -134,35 +133,39 @@ pub struct GameSummary {
     pub game_type: String,
     pub players: Vec<String>,
     pub stage: String,
+    pub last_updated: DateTime<Utc>
 }
 
 pub struct GameManager {
-    games: DashMap<GameId, Mutex<Box<dyn GameAdapter>>>,
-    sessions: DashMap<SessionId, Session>,
+    games: DashMap<GameId, Mutex<Game>>,
 }
 
 impl GameManager {
     pub fn new() -> Self {
-        GameManager {
-            games: DashMap::new(),
-            sessions: DashMap::new(),
-        }
+        GameManager { games: DashMap::new() }
     }
 
-    pub fn create_game(&self, game: impl FnOnce(GameId) -> Box<dyn GameAdapter>) -> Result<GameId> {
+    pub fn create_game(&self, factory: impl FnOnce(GameId) -> Box<dyn GameAdapter>) -> Result<GameId> {
+        self.gc_games();
+
         loop {
             let game_id = GameId::new();
             if let entry @ Entry::Vacant(_) = self.games.entry(game_id) {
-                entry.or_insert(Mutex::new(game(game_id)));
+                entry.or_insert(Mutex::new(Game {
+                    adapter: factory(game_id),
+                    sessions: HashMap::new(),
+                    last_update: chrono::offset::Utc::now()
+                }));
                 break Ok(game_id);
             }
         }
     }
 
     pub fn receive_join(&self, game_id: GameId, username: String) -> Result<SessionId> {
-        let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
-        let mut mutex_guard = game_adapter_mutex.lock().unwrap();
-        let game_adapter = mutex_guard.deref_mut();
+        let mutex = self.games.get(&game_id)
+            .ok_or_else(|| { GameManager::game_not_found(game_id) })?;
+        let mut mutex_guard = mutex.lock().unwrap();
+        let game_adapter = mutex_guard.adapter.deref_mut();
 
         if game_adapter.get_stage() != Stage::Waiting {
             return Err(GameAdapterError::actix_err(
@@ -193,13 +196,15 @@ impl GameManager {
         }
 
         game_adapter.add_player(username.clone())?;
+        mutex_guard.last_update = chrono::offset::Utc::now();
 
+        let new_session = Session::new(username);
         loop {
             let session_id = SessionId::new();
-            if let entry @ Entry::Vacant(_) = self.sessions.entry(session_id) {
-                let session = Session::new(username, game_id);
-                entry.or_insert(session);
-                break Ok(session_id);
+
+            if !mutex_guard.sessions.contains_key(&session_id) {
+                mutex_guard.sessions.insert(session_id, new_session);
+                return Ok(session_id)
             }
         }
     }
@@ -210,28 +215,26 @@ impl GameManager {
         session_id: SessionId,
         encoded_move: Value,
     ) -> Result<()> {
-        let session = GameManager::get_session(&self.sessions, session_id)?;
-        if session.game_id != game_id {
-            return Err(actix_web::Error::from(
-                GameManagerError::GameIdDoesNotMatch {
-                    game_id,
-                    session_id,
-                },
-            ));
-        }
+        let mutex = self.games.get(&game_id)
+            .ok_or_else(|| { GameManager::game_not_found(game_id) })?;
+        let mut mutex_guard = mutex.lock().unwrap();
+        let username = mutex_guard.sessions.get(&session_id)
+            .ok_or_else(|| { GameManager::session_not_found(session_id) })?.username.clone();
 
-        let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
-        let mut game_adapter = game_adapter_mutex.lock().unwrap();
-
-        game_adapter.play_move(GenericGameMove {
-            player: session.username.clone(),
+        mutex_guard.adapter.deref_mut().play_move(GenericGameMove {
+            player: username,
             payload: encoded_move,
-        })
+        })?;
+        mutex_guard.last_update = chrono::offset::Utc::now();
+
+        Ok(())
     }
 
     pub fn get_state(&self, game_id: GameId) -> Result<GenericGameState> {
-        let game_adapter_mutex = GameManager::get_game_adapter_mutex(&self.games, game_id)?;
-        let game_adapter = game_adapter_mutex.lock().unwrap();
+        let mutex = self.games.get(&game_id)
+            .ok_or_else(|| { GameManager::game_not_found(game_id) })?;
+        let mut mutex_guard = mutex.lock().unwrap();
+        let game_adapter = mutex_guard.adapter.deref_mut();
 
         let mut state = game_adapter.get_encoded_state()?;
 
@@ -251,47 +254,45 @@ impl GameManager {
         self.games
             .iter()
             .map(|x| {
-                let game_adapter = x.value().lock().unwrap();
+                let mut guard = x.value().lock().unwrap();
+                let game_adapter = guard.adapter.deref_mut();
                 let state = game_adapter.get_encoded_state().unwrap();
                 GameSummary {
                     game_id: x.key().to_string(),
                     game_type: String::from(game_adapter.get_type()),
                     players: state.players,
                     stage: state.stage.to_string(),
+                    last_updated: guard.last_update
                 }
             })
             .collect()
     }
 
     pub fn subscribe(&self, game_id: GameId) -> Result<Subscription> {
-        Ok(GameManager::get_game_adapter_mutex(&self.games, game_id)?
+        Ok(self.games.get(&game_id)
+            .ok_or_else(|| { GameManager::game_not_found(game_id) })?
             .lock()
             .unwrap()
+            .adapter.deref_mut()
             .get_notifier()
             .subscribe())
     }
 
-    fn get_game_adapter_mutex<'a>(
-        games: &DashMap<GameId, GameAdapterMutex>,
-        game_id: GameId,
-    ) -> Result<Ref<GameId, GameAdapterMutex>> {
-        match games.get(&game_id) {
-            Some(x) => Ok(x),
-            None => Err(actix_web::Error::from(GameManagerError::GameNotFound(
-                game_id,
-            ))),
-        }
+    fn gc_games(&self) {
+        let now = chrono::offset::Utc::now();
+        self.games.retain(|_, v| {
+            match v.try_lock() {
+                Ok(guard) => guard.last_update + Duration::minutes(5) >= now,
+                Err(_) => true
+            }
+        })
     }
 
-    fn get_session<'a>(
-        sessions: &DashMap<SessionId, Session>,
-        session_id: SessionId,
-    ) -> Result<Ref<SessionId, Session>> {
-        match sessions.get(&session_id) {
-            Some(x) => Ok(x),
-            None => Err(actix_web::Error::from(GameManagerError::SessionNotFound(
-                session_id,
-            ))),
-        }
+    fn game_not_found(game_id: GameId) -> actix_web::Error {
+        actix_web::Error::from(GameManagerError::GameNotFound(game_id))
+    }
+
+    fn session_not_found(session_id: SessionId) -> actix_web::Error {
+        actix_web::Error::from(GameManagerError::SessionNotFound(session_id))
     }
 }
