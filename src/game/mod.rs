@@ -30,7 +30,7 @@ fn decode_id(data: &str) -> Option<Vec<u8>> {
 pub struct GameId([u8; 4]);
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Debug, Display)]
-#[display(fmt = "game_{}", "encode_id(_0)")]
+#[display(fmt = "session_{}", "encode_id(_0)")]
 pub struct SessionId([u8; 16]);
 
 fn new_parse_id_error(id: &String) -> Error {
@@ -47,9 +47,7 @@ fn validate_id(id: &String, prefix: &str) -> Result<Vec<u8>, Error> {
 
 impl GameId {
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let bytes: [u8; 4] = rng.gen();
-        GameId(bytes)
+        GameId(rand::thread_rng().gen())
     }
 
     // Added for API to create a GameId object to input to the GameManager
@@ -62,9 +60,7 @@ impl GameId {
 
 impl SessionId {
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let bytes: [u8; 16] = rng.gen();
-        SessionId(bytes)
+        SessionId(rand::thread_rng().gen())
     }
 
     // Added for API to create a SessionId object
