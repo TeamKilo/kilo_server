@@ -258,117 +258,81 @@ impl Connect4 {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_Down() {
-        let mut game = Connect4 {
+    fn create_game() -> Connect4 {
+        Connect4 {
+            game_id: GameId::new(),
             completed: false,
             turn: Token::Red,
             board: vec![vec![]; COL_SIZE],
-        };
-        game.insert_move_if_legal(0);
+        }
+    }
+
+    fn display_board(board: &Vec<Vec<Token>>) {
+        board.iter().for_each(|it| {
+            println!("{:#?}", it);
+        });
+    }
+
+    fn play_moves(game: &mut Connect4, moves: Vec<usize>) {
+        moves.iter().for_each(|column| {
+            game.insert_move_if_legal(*column).unwrap();
+            game.switch_token();
+        });
         game.switch_token();
-        game.insert_move_if_legal(3);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        game.switch_token();
-        game.insert_move_if_legal(2);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        game.switch_token();
-        game.insert_move_if_legal(1);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        assert_eq!(game.winning_move(0), true);
     }
 
     #[test]
-    fn test_LandR() {
-        let mut game = Connect4 {
-            completed: false,
-            turn: Token::Red,
-            board: vec![vec![]; COL_SIZE],
-        };
-        game.insert_move_if_legal(3);
-        game.switch_token();
-        game.insert_move_if_legal(3);
-        game.switch_token();
-        game.insert_move_if_legal(2);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        game.switch_token();
-        game.insert_move_if_legal(1);
-        game.switch_token();
-        game.insert_move_if_legal(1);
-        game.switch_token();
-        game.insert_move_if_legal(4);
-        game.board.iter().for_each(|it| {
-            println!("{:#?}", it);
-        });
-        assert_eq!(game.winning_move(4), true);
+    fn down_win_detected() {
+        let mut game = create_game();
+
+        play_moves(&mut game, vec![0, 3, 0, 2, 0, 1, 0]);
+
+        display_board(&game.board);
+        assert!(game.winning_move(0));
     }
 
     #[test]
-    fn test_LUandRD() {
+    fn left_right_win_detected() {
         let mut game = Connect4 {
+            game_id: GameId::new(),
             completed: false,
             turn: Token::Red,
             board: vec![vec![]; COL_SIZE],
         };
-        game.insert_move_if_legal(2);
-        game.switch_token();
-        game.insert_move_if_legal(3);
-        game.switch_token();
-        game.insert_move_if_legal(1);
-        game.switch_token();
-        game.insert_move_if_legal(2);
-        game.switch_token();
-        game.insert_move_if_legal(1);
-        game.switch_token();
-        game.insert_move_if_legal(1);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        game.board.iter().for_each(|it| {
-            println!("{:#?}", it);
-        });
-        assert_eq!(game.winning_move(0), true);
+
+        play_moves(&mut game, vec![3, 3, 2, 0, 1, 1, 4]);
+
+        display_board(&game.board);
+        assert!(game.winning_move(4));
     }
+
     #[test]
-    fn test_LDandRU() {
+    fn left_up_and_right_down_win_detected() {
         let mut game = Connect4 {
+            game_id: GameId::new(),
             completed: false,
             turn: Token::Red,
             board: vec![vec![]; COL_SIZE],
         };
-        game.insert_move_if_legal(2);
-        game.switch_token();
-        game.insert_move_if_legal(3);
-        game.switch_token();
-        game.insert_move_if_legal(3);
-        game.switch_token();
-        game.insert_move_if_legal(4);
-        game.switch_token();
-        game.insert_move_if_legal(4);
-        game.switch_token();
-        game.insert_move_if_legal(5);
-        game.switch_token();
-        game.insert_move_if_legal(4);
-        game.switch_token();
-        game.insert_move_if_legal(5);
-        game.switch_token();
-        game.insert_move_if_legal(0);
-        game.switch_token();
-        game.insert_move_if_legal(5);
-        game.switch_token();
-        game.insert_move_if_legal(5);
-        game.board.iter().for_each(|it| {
-            println!("{:#?}", it);
-        });
-        assert_eq!(game.winning_move(5), true);
+
+        play_moves(&mut game, vec![2, 3, 1, 2, 1, 1, 0, 0, 0, 0]);
+
+        display_board(&game.board);
+        assert!(game.winning_move(0));
+    }
+
+    #[test]
+    fn left_down_and_right_up_win_detected() {
+        let mut game = Connect4 {
+            game_id: GameId::new(),
+            completed: false,
+            turn: Token::Red,
+            board: vec![vec![]; COL_SIZE],
+        };
+
+        play_moves(&mut game, vec![2, 3, 3, 4, 4, 5, 4, 5, 0, 5, 5]);
+
+        display_board(&game.board);
+        assert!(game.winning_move(5));
     }
 }
