@@ -13,10 +13,10 @@ use std::vec::Vec;
 
 const NUM_PLAYERS: usize = 4;
 
-const BOARD_MIN_X: i32 = -100;
-const BOARD_MAX_X: i32 = 100;
-const BOARD_MIN_Y: i32 = -100;
-const BOARD_MAX_Y: i32 = 100;
+const BOARD_MIN_X: i32 = -50;
+const BOARD_MAX_X: i32 = 50;
+const BOARD_MIN_Y: i32 = -50;
+const BOARD_MAX_Y: i32 = 50;
 
 pub struct SnakeAdapter {
     game_id: GameId,
@@ -55,6 +55,15 @@ struct SnakeRequestPayload {
 struct Point2D {
     x: i32,
     y: i32,
+}
+
+impl Point2D {
+    fn random() -> Self {
+        Point2D {
+            x: thread_rng().gen_range(BOARD_MIN_X..=BOARD_MAX_X),
+            y: thread_rng().gen_range(BOARD_MIN_Y..=BOARD_MAX_Y),
+        }
+    }
 }
 
 impl<'a, 'b> Add<&'a Direction> for &'b Point2D {
@@ -124,13 +133,10 @@ impl GameAdapter for SnakeAdapter {
         assert_eq!(self.stage, Stage::Waiting);
 
         self.players.push(username.clone());
-        self.game.state.players.insert(
-            username,
-            VecDeque::from([Point2D {
-                x: thread_rng().gen_range(BOARD_MIN_X..=BOARD_MAX_X),
-                y: thread_rng().gen_range(BOARD_MIN_Y..=BOARD_MAX_Y),
-            }]),
-        );
+        self.game
+            .state
+            .players
+            .insert(username, VecDeque::from([Point2D::random()]));
         if self.players.len() == NUM_PLAYERS {
             self.stage = Stage::InProgress;
         }
@@ -177,10 +183,16 @@ impl GameAdapter for SnakeAdapter {
     }
 
     fn get_encoded_state(&self) -> actix_web::Result<GenericGameState> {
+        let all_players = self.game.state.players.keys();
+        let can_move = all_players
+            .filter(|&x| !self.game.moves.contains_key(x))
+            .cloned()
+            .collect();
+
         Ok(GenericGameState {
             players: self.players.clone(),
             stage: self.stage,
-            can_move: self.game.state.players.keys().cloned().collect(),
+            can_move,
             winners: if self.stage == Stage::Ended {
                 self.game.state.players.keys().cloned().collect()
             } else {
@@ -196,10 +208,6 @@ impl GameAdapter for SnakeAdapter {
 }
 
 impl Snake {
-    fn spawn_fruit(&mut self) {
-        todo!()
-    }
-
     fn time_step(&mut self) -> actix_web::Result<()> {
         let mut occupied: HashSet<Point2D> = HashSet::new();
 
@@ -208,6 +216,7 @@ impl Snake {
             occupied.extend(deque.iter());
         }
 
+        let mut newly_occupied: HashMap<Point2D, &String> = HashMap::new();
         for (player, dir) in self.moves.iter() {
             let deque = self.state.players.get_mut(player).unwrap();
             let new_point = deque.front().unwrap() + dir;
@@ -220,16 +229,31 @@ impl Snake {
             {
                 self.state.players.remove(player);
             } else {
-                deque.push_front(new_point);
-                if self.state.fruits.contains(&new_point) {
-                    // self.spawn_fruit();
+                if let Some(collided) = newly_occupied.insert(new_point, player) {
+                    self.state.players.remove(collided);
+                    self.state.players.remove(player);
                 } else {
-                    deque.pop_back();
+                    deque.push_front(new_point);
+                    if self.state.fruits.contains(&new_point) {
+                        self.state.fruits.remove(&new_point);
+                    } else {
+                        deque.pop_back();
+                    }
                 }
             }
         }
-
+        occupied.extend(newly_occupied.keys());
         self.moves.clear();
+
+        for _ in 0..5 {
+            if self.state.fruits.len() > 2 {
+                break;
+            }
+            let fruit_pos = Point2D::random();
+            if !occupied.contains(&fruit_pos) && !self.state.fruits.contains(&fruit_pos) {
+                self.state.fruits.insert(fruit_pos);
+            }
+        }
 
         Ok(())
     }

@@ -304,6 +304,7 @@ paths:
                       payload:
                         oneOf:
                           - $ref: '#/components/schemas/Connect4Request'
+                          - $ref: '#/components/schemas/SnakeRequest'
                         discriminator:
                           propertyName: game_type
         400:
@@ -342,6 +343,7 @@ paths:
                 payload:
                   oneOf:
                     - $ref: '#/components/schemas/Connect4Response'
+                    - $ref: '#/components/schemas/SnakeResponse'
                   discriminator:
                     propertyName: game_type
         required: true
@@ -444,6 +446,7 @@ components:
         - $ref: '#/components/schemas/GameTypeBase'
         - enum:
             - connect_4
+            - snake
     GameId:
       type: string
       example: game_NF6G5NI
@@ -548,6 +551,8 @@ components:
       type: string
       pattern: '^Path deserialize error:'
     QueryDeserializeError:
+      type: string
+      pattern: '^Query deserialize error:'
     Point2D:
       type: object
       required:
@@ -571,30 +576,38 @@ components:
         game_type:
           allOf:
             - $ref: '#/components/schemas/GameTypeBase'
-            - enum: [ 'connect_4' ]
-        cells:
-          type: array
-          items:
+            - enum: [ 'snake' ]
+        players:
+          type: object
+          additionalProperties:
             type: array
             items:
-              $ref: '#/components/schemas/Username'
+              $ref: '#/components/schemas/Point2D'
             description: >
-              A column from a connect 4 game, with tokens being
-              represented by the usernames of the players who
-              placed them and the bottom token being the
-              leftmost
-            maxItems: 6
-          description: An array of a connect 4 game's columns
-          minItems: 7
-          maxItems: 7
+              The list of points occupied by a player. The first
+              element in the list is the front of the snake.
+            minItems: 1
+          description: An map from players to arrays of occupied points.
           example:
-            - [ ]
-            - [ "Player 1", "Player 2" ]
-            - [ "Player 2" ]
-            - [ "Player 1" ]
-            - [ ]
-            - [ ]
-            - [ ]
+            henry:
+              - x: 3
+                y: 4
+              - x: 4
+                y: 4
+              - x: 5
+                y: 4
+        fruits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Point2D'
+            description: >
+              A list of 2D points representing the locations of
+              fruit.
+          example:
+            - x: 7
+              y: 14
+            - x: -6
+              y: 8
       description: Payload for a connect 4 game's state
     SnakeResponse:
       type: object
@@ -614,9 +627,6 @@ components:
             - left
             - right
       description: Payload for a snake game move
-    NoSuchGameType:
-      type: string
-      pattern: '^Query deserialize error:'
     PayloadSizeError:
       type: string
       pattern: '^Json payload size is bigger than allowed$'
@@ -653,7 +663,6 @@ components:
       type: string
       pattern: '^player .+ cannot move at the moment (game_[A-Z0-9]+)$'
       example: 'player Player 1 cannot move at the moment (game_NF6G5NI)'
-
   links:
     GameIdJoinGame:
       operationId: joinGame
