@@ -548,6 +548,73 @@ components:
       type: string
       pattern: '^Path deserialize error:'
     QueryDeserializeError:
+    Point2D:
+      type: object
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: integer
+          description: The x coordinate of this point
+          example: 47
+        y:
+          type: integer
+          description: The y coordinate of this point
+          example: -38
+    SnakeRequest:
+      type: object
+      required:
+        - game_type
+        - cells
+      properties:
+        game_type:
+          allOf:
+            - $ref: '#/components/schemas/GameTypeBase'
+            - enum: [ 'connect_4' ]
+        cells:
+          type: array
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/Username'
+            description: >
+              A column from a connect 4 game, with tokens being
+              represented by the usernames of the players who
+              placed them and the bottom token being the
+              leftmost
+            maxItems: 6
+          description: An array of a connect 4 game's columns
+          minItems: 7
+          maxItems: 7
+          example:
+            - [ ]
+            - [ "Player 1", "Player 2" ]
+            - [ "Player 2" ]
+            - [ "Player 1" ]
+            - [ ]
+            - [ ]
+            - [ ]
+      description: Payload for a connect 4 game's state
+    SnakeResponse:
+      type: object
+      required:
+        - game_type
+        - direction
+      properties:
+        game_type:
+          allOf:
+            - $ref: '#/components/schemas/GameTypeBase'
+            - enum: [ 'snake' ]
+        direction:
+          type: string
+          enum:
+            - up
+            - down
+            - left
+            - right
+      description: Payload for a snake game move
+    NoSuchGameType:
       type: string
       pattern: '^Query deserialize error:'
     PayloadSizeError:
@@ -586,6 +653,7 @@ components:
       type: string
       pattern: '^player .+ cannot move at the moment (game_[A-Z0-9]+)$'
       example: 'player Player 1 cannot move at the moment (game_NF6G5NI)'
+
   links:
     GameIdJoinGame:
       operationId: joinGame

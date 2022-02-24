@@ -1,6 +1,7 @@
 pub mod adapter;
 pub mod connect4;
 pub mod search;
+pub mod snake;
 
 use crate::game::adapter::{
     GameAdapter, GameAdapterError, GameAdapterErrorType, GenericGameMove, GenericGameState, Stage,
@@ -22,10 +23,11 @@ use std::ops::DerefMut;
 use std::sync::Mutex;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
-#[serde(rename_all = "snake_case")]
 pub enum GameType {
     #[serde(rename = "connect_4")]
     Connect4,
+    #[serde(rename = "snake")]
+    Snake,
 }
 
 fn encode_id(bytes: &[u8]) -> String {
