@@ -1,8 +1,10 @@
 use crate::game::adapter::{
     GameAdapter, GameAdapterError, GameAdapterErrorType, GenericGameMove, GenericGameState, Stage,
 };
-use crate::game::GameId;
+use crate::game::{GameId, GameType};
 use crate::notify::Notifier;
+use actix_web::error::{InternalError, JsonPayloadError};
+use actix_web::HttpResponse;
 use serde::{Deserialize, Serialize};
 use std::vec;
 use std::vec::Vec;
@@ -22,8 +24,14 @@ pub struct Connect4Adapter {
 }
 
 #[derive(Deserialize)]
+pub enum ConstConnect4 {
+    #[serde(rename = "connect_4")]
+    Connect4,
+}
+
+#[derive(Deserialize)]
 struct Connect4RequestPayload {
-    game_type: String,
+    game_type: ConstConnect4,
     column: usize,
 }
 
@@ -98,7 +106,17 @@ impl GameAdapter for Connect4Adapter {
                 GameAdapterErrorType::InvalidGameStage(self.stage),
             ));
         }
-        let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload)?;
+
+        let request_payload = serde_json::from_value::<Connect4RequestPayload>(game_move.payload)
+            .map_err(|e| {
+            InternalError::from_response(
+                "",
+                HttpResponse::BadRequest()
+                    .content_type("text/plain")
+                    .body(JsonPayloadError::Deserialize(e).to_string()),
+            )
+        })?;
+
         let column = request_payload.column;
         let player = self.get_user_from_token();
         let user = game_move.player;
@@ -171,8 +189,8 @@ impl GameAdapter for Connect4Adapter {
         user
     }
 
-    fn get_type(&self) -> &str {
-        "connect_4"
+    fn get_type(&self) -> GameType {
+        GameType::Connect4
     }
 }
 
