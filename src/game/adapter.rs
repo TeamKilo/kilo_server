@@ -1,4 +1,4 @@
-use crate::game::GameId;
+use crate::game::{GameId, GameType};
 use crate::notify::Notifier;
 use actix_web::http::StatusCode;
 use actix_web::{ResponseError, Result};
@@ -47,14 +47,11 @@ impl ResponseError for GameAdapterError {
     }
 }
 
-#[derive(Serialize, Debug, Copy, Clone, Eq, PartialEq, Display)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum Stage {
-    #[display(fmt = "waiting")]
     Waiting,
-    #[display(fmt = "in_progress")]
     InProgress,
-    #[display(fmt = "ended")]
     Ended,
 }
 
@@ -84,5 +81,5 @@ pub trait GameAdapter: Send {
     fn get_stage(&self) -> Stage;
     fn get_encoded_state(&self) -> Result<GenericGameState>;
     fn get_user_from_token(&self) -> String;
-    fn get_type(&self) -> &str;
+    fn get_type(&self) -> GameType;
 }
