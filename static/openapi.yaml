@@ -56,19 +56,92 @@ paths:
               $ref: '#/components/links/GameIdGetState'
             Submit move:
               $ref: '#/components/links/GameIdSubmitMove'
-        404:
-          description: Game type not found
+        400:
+          description: JSON deserialization error
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/NoSuchGameType'
+                $ref: '#/components/schemas/JSONDeserializeError'
   /list-games:
     get:
       tags:
         - Game management
       summary: List existing games
-      description: List the ID, game type, players and stage of each existing game
+      description: List the ID, game type, players, stage and last updated time of up to 20 existing game
       operationId: listGames
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: >
+            The page of the pagination of game summaries, with the first page
+            having the first 20 results, the second having the next 20 and so
+            on
+          required: false
+        - in: query
+          name: sort_order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: desc
+          description: >
+            Whether the results are sorted in **asc**ending or **desc**ending
+            order, where ascending is from A to Z
+          required: false
+        - in: query
+          name: sort_key
+          schema:
+            type: string
+            enum:
+              - game_type
+              - players
+              - stage
+              - last_updated
+            default: last_updated
+          description: >
+            What the game summary list is sorted by
+            
+            - `game_type` - Sort by the type of game
+            
+            - `players` - Sort by the number of players
+            
+            - `stage` - Sort by the game stage
+            
+            - `last_updated` - Sort by the time the game was lasted updated
+            
+            Game summaries with equal values for each key are sorted by the
+            following key in the above list
+          required: false
+        - in: query
+          name: game_type
+          schema:
+            $ref: '#/components/schemas/GameType'
+          description: >
+            If this is parameter present, only games of this type are
+            searched for
+          required: false
+        - in: query
+          name: players
+          schema:
+            type: integer
+            minimum: 0
+          description: >
+            If this is parameter present, only games with this number
+            of players are searched for
+          required: false
+        - in: query
+          name: stage
+          schema:
+            $ref: '#/components/schemas/Stage'
+          description: >
+            If this is parameter present, only games in this stage are
+            searched for
+          required: false
       responses:
         200:
           description: A list of IDs, players and stages of existing games
@@ -88,6 +161,12 @@ paths:
                         game_type:
                           $ref: '#/components/schemas/GameType'
                     - $ref: '#/components/schemas/GameSummaryBase'
+        400:
+          description: Query deserialization error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/QueryDeserializeError'
   /{game_id}/join-game:
     post:
       tags:
@@ -130,12 +209,12 @@ paths:
               $ref: '#/components/links/SessionIdSubmitMove'
         400:
           description: >
-            Game ID is invalid, username is invalid or game has already started
+            Path deserialization error, username is invalid or game has already started
           content:
             text/plain:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/InvalidId'
+                  - $ref: '#/components/schemas/PathDeserializeError'
                   - $ref: '#/components/schemas/InvalidUsername'
                   - $ref: '#/components/schemas/GameInProgress'
         404:
@@ -215,11 +294,13 @@ paths:
                         discriminator:
                           propertyName: game_type
         400:
-          description: Game ID is invalid
+          description: Path or JSON deserialization error
           content:
             text/plain:
               schema:
-                $ref: '#/components/schemas/InvalidId'
+                oneOf:
+                  - $ref: '#/components/schemas/PathDeserializeError'
+                  - $ref: '#/components/schemas/JSONDeserializeError'
         404:
           description: Game not found
           content:
@@ -272,14 +353,15 @@ paths:
                     $ref: '#/components/schemas/SessionId'
         400:
           description: >
-            Game or session ID is invalid, game is not in progress,
+            Path or JSON deserialization error, game is not in progress,
             session does not match game, move is invalid or player cannot
             currently move
           content:
             text/plain:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/InvalidId'
+                  - $ref: '#/components/schemas/PathDeserializeError'
+                  - $ref: '#/components/schemas/JSONDeserializeError'
                   - $ref: '#/components/schemas/GameWaiting'
                   - $ref: '#/components/schemas/GameEnded'
                   - $ref: '#/components/schemas/InvalidMove'
@@ -329,6 +411,15 @@ paths:
                   clock:
                     type: integer
                     description: The current clock value at the server
+        400:
+          description: >
+            Path or query deserialization error
+          content:
+            text/plain:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PathDeserializeError'
+                  - $ref: '#/components/schemas/QueryDeserializeError'
 components:
   schemas:
     GameTypeBase:
@@ -371,21 +462,23 @@ components:
             - Player 1
             - Player 2
         stage:
-          type: string
-          enum:
-            - waiting
-            - in_progress
-            - ended
-          description: >
-            Whether the game is waiting for players, in progress or
-            over
-          example: in_progress
+          $ref: '#/components/schemas/Stage'
         last_updated:
           type: string
           format: date-time
           description: >
             The time of the most recent update to the game's state
           example: 2022-02-22T12:33:30+0000
+    Stage:
+      type: string
+      enum:
+        - waiting
+        - in_progress
+        - ended
+      description: >
+        Whether a game is waiting for players, in progress or
+        over
+      example: in_progress
     Connect4Request:
       type: object
       required:
@@ -435,14 +528,19 @@ components:
           minimum: 1
           maximum: 7
       description: Payload for a connect 4 game move
-    NoSuchGameType:
+    JSONDeserializeError:
       type: string
-      pattern: '^game type .+ does not exist$'
-      example: 'game type connect_minus_4 does not exist'
-    InvalidId:
+      pattern: '^Json deserialize error:'
+    PathDeserializeError:
       type: string
-      pattern: '^invalid id:'
-      example: 'invalid id: game_NF6G5NI'
+      pattern: '^Path deserialize error:'
+    QueryDeserializeError:
+      type: string
+      pattern: '^Query deserialize error:'
+    PayloadSizeError:
+      type: string
+      pattern: '^Json payload size is bigger than allowed$'
+      example: 'Json payload size is bigger than allowed'
     GameNotFound:
       type: string
       pattern: '^game game_[A-Z0-9]+ does not exist$'
