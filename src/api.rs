@@ -9,27 +9,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Deserialize)]
-pub struct CreateGameReq {
+pub struct CreateGameRequest {
     game_type: GameType,
 }
 
 #[derive(Serialize)]
-pub struct CreateGameRes {
+pub struct CreateGameResponse {
     game_id: GameId,
 }
 
 #[post("/api/create-game")]
 pub(crate) async fn create_game(
-    payload: web::Json<CreateGameReq>,
+    payload: web::Json<CreateGameRequest>,
     gm_wrapped: web::Data<GameManager>,
-) -> Result<Json<CreateGameRes>> {
+) -> Result<Json<CreateGameResponse>> {
     let game_id = match payload.game_type {
         GameType::Connect4 => {
             gm_wrapped.create_game(|id| Box::new(connect4::Connect4Adapter::new(id)))
         }
     }?;
 
-    Ok(Json(CreateGameRes { game_id }))
+    Ok(Json(CreateGameResponse { game_id }))
 }
 
 #[derive(Deserialize)]
@@ -42,11 +42,17 @@ pub struct ListGamesQuery {
     stage: Option<Stage>,
 }
 
+#[derive(Serialize)]
+pub struct ListGamesResponse {
+    game_summaries: Vec<GameSummary>,
+    number_of_games: usize,
+}
+
 #[get("/api/list-games")]
 pub(crate) async fn list_games(
     query: web::Query<ListGamesQuery>,
     gm_wrapped: web::Data<GameManager>,
-) -> Result<Json<Vec<GameSummary>>> {
+) -> Result<Json<ListGamesResponse>> {
     let ListGamesQuery {
         page,
         sort_order,
@@ -65,28 +71,33 @@ pub(crate) async fn list_games(
         stage,
     };
 
-    Ok(Json(gm_wrapped.list_games(options)?))
+    let game_summaries = gm_wrapped.list_games(options)?;
+
+    Ok(Json(ListGamesResponse {
+        game_summaries,
+        number_of_games: gm_wrapped.get_number_of_games(),
+    }))
 }
 
 #[derive(Deserialize)]
-pub struct JoinGameReq {
+pub struct JoinGameRequest {
     username: String,
 }
 
 #[derive(Serialize)]
-pub struct JoinGameRes {
+pub struct JoinGameResponse {
     session_id: SessionId,
 }
 
 #[post("/api/{game_id}/join-game")]
 pub(crate) async fn join_game(
     web::Path(game_id): web::Path<GameId>,
-    payload: web::Json<JoinGameReq>,
+    payload: web::Json<JoinGameRequest>,
     gm_wrapped: web::Data<GameManager>,
-) -> Result<Json<JoinGameRes>> {
+) -> Result<Json<JoinGameResponse>> {
     gm_wrapped
         .receive_join(game_id, payload.username.clone())
-        .and_then(|session_id| Ok(Json(JoinGameRes { session_id })))
+        .and_then(|session_id| Ok(Json(JoinGameResponse { session_id })))
 }
 
 #[get("/api/{game_id}/get-state")]
@@ -98,25 +109,25 @@ pub(crate) async fn get_state(
 }
 
 #[derive(Deserialize)]
-pub struct SubmitMoveReq {
+pub struct SubmitMoveRequest {
     session_id: SessionId,
     payload: Value,
 }
 
 #[derive(Serialize)]
-pub struct SubmitMoveRes {
+pub struct SubmitMoveResponse {
     success: bool,
 }
 
 #[post("/api/{game_id}/submit-move")]
 pub(crate) async fn submit_move(
     web::Path(game_id): web::Path<GameId>,
-    payload: web::Json<SubmitMoveReq>,
+    payload: web::Json<SubmitMoveRequest>,
     gm_wrapped: web::Data<GameManager>,
-) -> Result<Json<SubmitMoveRes>> {
+) -> Result<Json<SubmitMoveResponse>> {
     gm_wrapped
         .receive_move(game_id, payload.session_id, payload.payload.clone())
-        .and_then(|()| Ok(Json(SubmitMoveRes { success: true })))
+        .and_then(|()| Ok(Json(SubmitMoveResponse { success: true })))
 }
 
 #[derive(Deserialize)]
@@ -125,7 +136,7 @@ pub struct WaitForUpdateQuery {
 }
 
 #[derive(Serialize)]
-pub struct WaitForUpdateRes {
+pub struct WaitForUpdateResponse {
     clock: usize,
 }
 
@@ -134,8 +145,8 @@ pub(crate) async fn wait_for_update(
     web::Path(game_id): web::Path<GameId>,
     query: web::Query<WaitForUpdateQuery>,
     gm_wrapped: web::Data<GameManager>,
-) -> Result<Json<WaitForUpdateRes>> {
-    Ok(Json(WaitForUpdateRes {
+) -> Result<Json<WaitForUpdateResponse>> {
+    Ok(Json(WaitForUpdateResponse {
         clock: gm_wrapped.subscribe(game_id)?.wait(query.since).await?,
     }))
 }
