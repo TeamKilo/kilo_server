@@ -2,9 +2,7 @@
 
 use crate::game::adapter::{GameAdapter, Stage};
 use crate::game::search::{GameSummary, SearchOptions, SortKey, SortOrder};
-use crate::game::{
-    adapter, connect4, snake, GameId, GameManager, GameType, SessionId,
-};
+use crate::game::{adapter, connect4, snake, GameId, GameManager, GameType, SessionId};
 use actix_web::web::Json;
 use actix_web::{get, post, web, Result};
 use serde::{Deserialize, Serialize};
@@ -26,7 +24,9 @@ pub(crate) async fn create_game(
     gm_wrapped: web::Data<GameManager>,
 ) -> Result<Json<CreateGameResponse>> {
     let game_id = match payload.game_type {
-        GameType::Connect4 => gm_wrapped.create_game(|id| Box::new(connect4::Connect4Adapter::new(id))),
+        GameType::Connect4 => {
+            gm_wrapped.create_game(|id| Box::new(connect4::Connect4Adapter::new(id)))
+        }
         GameType::Snake => gm_wrapped.create_game(|id| Box::new(snake::SnakeAdapter::new(id))),
     }?;
 

@@ -121,8 +121,14 @@ impl GameAdapter for SnakeAdapter {
                 state: SnakeResponsePayload {
                     players: HashMap::new(),
                     fruits: HashSet::new(),
-                    world_min: Point2D { x: BOARD_MIN_X, y: BOARD_MIN_Y },
-                    world_max: Point2D { x: BOARD_MAX_X, y: BOARD_MAX_Y },
+                    world_min: Point2D {
+                        x: BOARD_MIN_X,
+                        y: BOARD_MIN_Y,
+                    },
+                    world_max: Point2D {
+                        x: BOARD_MAX_X,
+                        y: BOARD_MAX_Y,
+                    },
                 },
             },
         }
@@ -249,13 +255,14 @@ impl Snake {
         occupied.extend(newly_occupied.keys());
         self.moves.clear();
 
-        for _ in 0..5 {
-            if self.state.fruits.len() > 2 {
-                break;
-            }
-            let fruit_pos = Point2D::random();
-            if !occupied.contains(&fruit_pos) && !self.state.fruits.contains(&fruit_pos) {
-                self.state.fruits.insert(fruit_pos);
+        if rand::thread_rng().gen_bool(0.3) {
+            // Attempt to spawn a single new fruit
+            for _ in 0..10 {
+                let fruit_pos = Point2D::random();
+                if !occupied.contains(&fruit_pos) && !self.state.fruits.contains(&fruit_pos) {
+                    self.state.fruits.insert(fruit_pos);
+                    break;
+                }
             }
         }
 
