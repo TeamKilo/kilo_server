@@ -208,10 +208,15 @@ pub struct GameManager {
 
 impl GameManager {
     pub fn new() -> Self {
-        GameManager { games: DashMap::new() }
+        GameManager {
+            games: DashMap::new(),
+        }
     }
 
-    pub fn create_game(&self, factory: impl FnOnce(GameId) -> Box<dyn GameAdapter>) -> Result<GameId> {
+    pub fn create_game(
+        &self,
+        factory: impl FnOnce(GameId) -> Box<dyn GameAdapter>,
+    ) -> Result<GameId> {
         self.gc_games();
 
         loop {
@@ -220,7 +225,7 @@ impl GameManager {
                 entry.or_insert(Mutex::new(Game {
                     adapter: factory(game_id),
                     sessions: HashMap::new(),
-                    last_update: chrono::offset::Utc::now()
+                    last_update: chrono::offset::Utc::now(),
                 }));
                 break Ok(game_id);
             }
@@ -228,8 +233,10 @@ impl GameManager {
     }
 
     pub fn receive_join(&self, game_id: GameId, username: String) -> Result<SessionId> {
-        let mutex = self.games.get(&game_id)
-            .ok_or_else(|| { GameManager::game_not_found(game_id) })?;
+        let mutex = self
+            .games
+            .get(&game_id)
+            .ok_or_else(|| GameManager::game_not_found(game_id))?;
         let mut mutex_guard = mutex.lock().unwrap();
         let game_adapter = mutex_guard.adapter.deref_mut();
 
@@ -270,7 +277,7 @@ impl GameManager {
 
             if !mutex_guard.sessions.contains_key(&session_id) {
                 mutex_guard.sessions.insert(session_id, new_session);
-                return Ok(session_id)
+                return Ok(session_id);
             }
         }
     }
@@ -281,11 +288,17 @@ impl GameManager {
         session_id: SessionId,
         encoded_move: Value,
     ) -> Result<()> {
-        let mutex = self.games.get(&game_id)
-            .ok_or_else(|| { GameManager::game_not_found(game_id) })?;
+        let mutex = self
+            .games
+            .get(&game_id)
+            .ok_or_else(|| GameManager::game_not_found(game_id))?;
         let mut mutex_guard = mutex.lock().unwrap();
-        let username = mutex_guard.sessions.get(&session_id)
-            .ok_or_else(|| { GameManager::session_not_found(session_id) })?.username.clone();
+        let username = mutex_guard
+            .sessions
+            .get(&session_id)
+            .ok_or_else(|| GameManager::session_not_found(session_id))?
+            .username
+            .clone();
 
         mutex_guard.adapter.deref_mut().play_move(GenericGameMove {
             player: username,
@@ -297,8 +310,10 @@ impl GameManager {
     }
 
     pub fn get_state(&self, game_id: GameId) -> Result<GenericGameState> {
-        let mutex = self.games.get(&game_id)
-            .ok_or_else(|| { GameManager::game_not_found(game_id) })?;
+        let mutex = self
+            .games
+            .get(&game_id)
+            .ok_or_else(|| GameManager::game_not_found(game_id))?;
         let mut mutex_guard = mutex.lock().unwrap();
         let game_adapter = mutex_guard.adapter.deref_mut();
 
@@ -335,23 +350,28 @@ impl GameManager {
         )
     }
 
+    pub fn get_number_of_games(&self) -> usize {
+        self.games.len()
+    }
+
     pub fn subscribe(&self, game_id: GameId) -> Result<Subscription> {
-        Ok(self.games.get(&game_id)
-            .ok_or_else(|| { GameManager::game_not_found(game_id) })?
+        Ok(self
+            .games
+            .get(&game_id)
+            .ok_or_else(|| GameManager::game_not_found(game_id))?
             .lock()
             .unwrap()
-            .adapter.deref_mut()
+            .adapter
+            .deref_mut()
             .get_notifier()
             .subscribe())
     }
 
     fn gc_games(&self) {
         let now = chrono::offset::Utc::now();
-        self.games.retain(|_, v| {
-            match v.try_lock() {
-                Ok(guard) => guard.last_update + Duration::minutes(5) >= now,
-                Err(_) => true
-            }
+        self.games.retain(|_, v| match v.try_lock() {
+            Ok(guard) => guard.last_update + Duration::minutes(5) >= now,
+            Err(_) => true,
         })
     }
 
