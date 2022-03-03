@@ -13,10 +13,10 @@ use std::vec::Vec;
 
 const NUM_PLAYERS: usize = 4;
 
-const BOARD_MIN_X: i32 = -50;
-const BOARD_MAX_X: i32 = 50;
-const BOARD_MIN_Y: i32 = -50;
-const BOARD_MAX_Y: i32 = 50;
+const BOARD_MIN_X: i32 = -20;
+const BOARD_MAX_X: i32 = 20;
+const BOARD_MIN_Y: i32 = -20;
+const BOARD_MAX_Y: i32 = 20;
 
 pub struct SnakeAdapter {
     game_id: GameId,
@@ -95,6 +95,8 @@ impl<'a, 'b> Add<&'a Direction> for &'b Point2D {
 struct SnakeResponsePayload {
     players: HashMap<String, VecDeque<Point2D>>,
     fruits: HashSet<Point2D>,
+    world_min: Point2D,
+    world_max: Point2D,
 }
 
 struct Snake {
@@ -119,6 +121,8 @@ impl GameAdapter for SnakeAdapter {
                 state: SnakeResponsePayload {
                     players: HashMap::new(),
                     fruits: HashSet::new(),
+                    world_min: Point2D { x: BOARD_MIN_X, y: BOARD_MIN_Y },
+                    world_max: Point2D { x: BOARD_MAX_X, y: BOARD_MAX_Y },
                 },
             },
         }
@@ -169,7 +173,7 @@ impl GameAdapter for SnakeAdapter {
 
         self.game.record_move(user, request_payload.direction)?;
 
-        if self.game.state.players.len() == 1 {
+        if self.game.state.players.len() <= 1 {
             self.stage = Stage::Ended;
         }
 

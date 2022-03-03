@@ -571,7 +571,10 @@ components:
       type: object
       required:
         - game_type
-        - cells
+        - players
+        - fruits
+        - world_min
+        - world_max
       properties:
         game_type:
           allOf:
@@ -608,6 +611,12 @@ components:
               y: 14
             - x: -6
               y: 8
+        world_min:
+          $ref: '#/components/schemas/Point2D'
+          description: The point in the world with minimum x and y values (inclusive)
+        world_max:
+          $ref: '#/components/schemas/Point2D'
+          description: The point in the world with maximum x and y values (inclusive)
       description: Payload for a connect 4 game's state
     SnakeResponse:
       type: object
