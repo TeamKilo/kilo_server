@@ -465,6 +465,7 @@ components:
       required:
         - players
         - stage
+        - last_updated
       properties:
         players:
           type: array
