@@ -67,7 +67,9 @@ paths:
       tags:
         - Game management
       summary: List existing games
-      description: List the ID, game type, players, stage and last updated time of up to 20 existing game
+      description: >
+        List the ID, game type, players, stage and last updated time of up to 20
+        existing games and give the total number of existing games
       operationId: listGames
       parameters:
         - in: query
@@ -144,23 +146,34 @@ paths:
           required: false
       responses:
         200:
-          description: A list of IDs, players and stages of existing games
+          description: A list of game summaries and the number of games existing
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  allOf:
-                    - type: object
-                      required:
-                        - game_id
-                        - game_type
-                      properties:
-                        game_id:
-                          $ref: '#/components/schemas/GameId'
-                        game_type:
-                          $ref: '#/components/schemas/GameType'
-                    - $ref: '#/components/schemas/GameSummaryBase'
+                type: object
+                required:
+                  - game_summaries
+                  - number_of_games
+                properties:
+                  game_summaries:
+                    type: array
+                    description: A list of game summaries
+                    items:
+                      allOf:
+                        - type: object
+                          required:
+                            - game_id
+                            - game_type
+                          properties:
+                            game_id:
+                              $ref: '#/components/schemas/GameId'
+                            game_type:
+                              $ref: '#/components/schemas/GameType'
+                        - $ref: '#/components/schemas/GameSummaryBase'
+                  number_of_games:
+                    type: number
+                    description: The number of games existing
+                    minimum: 0
         400:
           description: Query deserialization error
           content:
