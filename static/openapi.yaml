@@ -617,7 +617,7 @@ components:
         world_max:
           $ref: '#/components/schemas/Point2D'
           description: The point in the world with maximum x and y values (inclusive)
-      description: Payload for a connect 4 game's state
+      description: Payload for a snake game's state
     SnakeResponse:
       type: object
       required:
