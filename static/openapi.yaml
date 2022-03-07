@@ -9,7 +9,7 @@ info:
   #   email: apiteam@swagger.io
   license:
     name: Dual MIT/Apache 2.0
-    url: https://github.com/TeamKilo/kilo_server/search?q=LICENSE
+    url: https://github.com/search?q=repo%3ATeamKilo%2Fkilo_server+filename%3ALICENSE&type=Code
   version: 0.1.0
 servers:
   - url: https://team-kilo-server.herokuapp.com/api
@@ -468,6 +468,7 @@ components:
       required:
         - players
         - stage
+        - last_updated
       properties:
         players:
           type: array
