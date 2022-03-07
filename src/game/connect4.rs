@@ -53,6 +53,16 @@ enum Token {
     Blue,
 }
 
+impl Connect4Adapter {
+    fn get_user_from_token(&self) -> String {
+        let user = match self.game.turn {
+            Token::Red => self.players.get(0).unwrap().clone(),
+            Token::Blue => self.players.get(1).unwrap().clone(),
+        };
+        user
+    }
+}
+
 impl GameAdapter for Connect4Adapter {
     fn new(game_id: GameId) -> Self
     where
@@ -179,14 +189,6 @@ impl GameAdapter for Connect4Adapter {
             winners: self.winner.clone(),
             payload: serde_json::to_value(&response_payload)?,
         })
-    }
-
-    fn get_user_from_token(&self) -> String {
-        let user = match self.game.turn {
-            Token::Red => self.players.get(0).unwrap().clone(),
-            Token::Blue => self.players.get(1).unwrap().clone(),
-        };
-        user
     }
 
     fn get_type(&self) -> GameType {
