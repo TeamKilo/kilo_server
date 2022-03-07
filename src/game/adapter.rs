@@ -80,6 +80,5 @@ pub trait GameAdapter: Send {
     fn play_move(&mut self, game_move: GenericGameMove) -> Result<()>;
     fn get_stage(&self) -> Stage;
     fn get_encoded_state(&self) -> Result<GenericGameState>;
-    fn get_user_from_token(&self) -> String;
     fn get_type(&self) -> GameType;
 }

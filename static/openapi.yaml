@@ -304,6 +304,7 @@ paths:
                       payload:
                         oneOf:
                           - $ref: '#/components/schemas/Connect4Request'
+                          - $ref: '#/components/schemas/SnakeRequest'
                         discriminator:
                           propertyName: game_type
         400:
@@ -342,6 +343,7 @@ paths:
                 payload:
                   oneOf:
                     - $ref: '#/components/schemas/Connect4Response'
+                    - $ref: '#/components/schemas/SnakeResponse'
                   discriminator:
                     propertyName: game_type
         required: true
@@ -444,6 +446,7 @@ components:
         - $ref: '#/components/schemas/GameTypeBase'
         - enum:
             - connect_4
+            - snake
     GameId:
       type: string
       example: game_NF6G5NI
@@ -550,6 +553,89 @@ components:
     QueryDeserializeError:
       type: string
       pattern: '^Query deserialize error:'
+    Point2D:
+      type: object
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: integer
+          description: The x coordinate of this point
+          example: 47
+        y:
+          type: integer
+          description: The y coordinate of this point
+          example: -38
+    SnakeRequest:
+      type: object
+      required:
+        - game_type
+        - players
+        - fruits
+        - world_min
+        - world_max
+      properties:
+        game_type:
+          allOf:
+            - $ref: '#/components/schemas/GameTypeBase'
+            - enum: [ 'snake' ]
+        players:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/Point2D'
+            description: >
+              The list of points occupied by a player. The first
+              element in the list is the front of the snake.
+            minItems: 1
+          description: An map from players to arrays of occupied points.
+          example:
+            henry:
+              - x: 3
+                y: 4
+              - x: 4
+                y: 4
+              - x: 5
+                y: 4
+        fruits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Point2D'
+            description: >
+              A list of 2D points representing the locations of
+              fruit.
+          example:
+            - x: 7
+              y: 14
+            - x: -6
+              y: 8
+        world_min:
+          $ref: '#/components/schemas/Point2D'
+          description: The point in the world with minimum x and y values (inclusive)
+        world_max:
+          $ref: '#/components/schemas/Point2D'
+          description: The point in the world with maximum x and y values (inclusive)
+      description: Payload for a snake game's state
+    SnakeResponse:
+      type: object
+      required:
+        - game_type
+        - direction
+      properties:
+        game_type:
+          allOf:
+            - $ref: '#/components/schemas/GameTypeBase'
+            - enum: [ 'snake' ]
+        direction:
+          type: string
+          enum:
+            - up
+            - down
+            - left
+            - right
+      description: Payload for a snake game move
     PayloadSizeError:
       type: string
       pattern: '^Json payload size is bigger than allowed$'

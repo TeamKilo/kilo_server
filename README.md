@@ -11,6 +11,7 @@ API documentation can be found at [kilo-games.netlify.app/docs](https://kilo-gam
 ## Games
 
 - Connect 4
+- Snake
 
 ## Development
 
