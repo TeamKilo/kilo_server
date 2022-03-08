@@ -13,10 +13,17 @@ use std::vec::Vec;
 
 const NUM_PLAYERS: usize = 4;
 
-const BOARD_MIN_X: i32 = -20;
-const BOARD_MAX_X: i32 = 20;
-const BOARD_MIN_Y: i32 = -20;
-const BOARD_MAX_Y: i32 = 20;
+const BOARD_MIN_X: i32 = -5;
+const BOARD_MAX_X: i32 = 5;
+const BOARD_MIN_Y: i32 = -5;
+const BOARD_MAX_Y: i32 = 5;
+
+const STARTS: [[Point2D; 3]; NUM_PLAYERS] = [
+    [Point2D::new(-3, -3), Point2D::new(-2, -3), Point2D::new(-1, -3)],
+    [Point2D::new(-3, 3), Point2D::new(-3, 2), Point2D::new(-3, 1)],
+    [Point2D::new(3, -3), Point2D::new(3, -2), Point2D::new(3, -1)],
+    [Point2D::new(3, 3), Point2D::new(2, 3), Point2D::new(1, 3)],
+];
 
 pub struct SnakeAdapter {
     game_id: GameId,
@@ -63,6 +70,10 @@ impl Point2D {
             x: thread_rng().gen_range(BOARD_MIN_X..=BOARD_MAX_X),
             y: thread_rng().gen_range(BOARD_MIN_Y..=BOARD_MAX_Y),
         }
+    }
+
+    const fn new(x: i32, y: i32) -> Self {
+        Point2D { x, y }
     }
 }
 
@@ -142,11 +153,9 @@ impl GameAdapter for SnakeAdapter {
         assert!(self.players.len() < NUM_PLAYERS);
         assert_eq!(self.stage, Stage::Waiting);
 
+        let start = VecDeque::from(STARTS[self.players.len()]);
         self.players.push(username.clone());
-        self.game
-            .state
-            .players
-            .insert(username, VecDeque::from([Point2D::random()]));
+        self.game.state.players.insert(username, start);
         if self.players.len() == NUM_PLAYERS {
             self.stage = Stage::InProgress;
         }
@@ -255,7 +264,12 @@ impl Snake {
         occupied.extend(newly_occupied.keys());
         self.moves.clear();
 
-        if rand::thread_rng().gen_bool(0.3) {
+        let fruit_prob = if self.state.fruits.is_empty() {
+            0.5
+        } else {
+            0.15
+        };
+        if rand::thread_rng().gen_bool(fruit_prob) {
             // Attempt to spawn a single new fruit
             for _ in 0..10 {
                 let fruit_pos = Point2D::random();
