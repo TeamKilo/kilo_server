@@ -19,10 +19,10 @@ const BOARD_MIN_Y: i32 = -5;
 const BOARD_MAX_Y: i32 = 5;
 
 const STARTS: [[Point2D; 3]; NUM_PLAYERS] = [
-    [Point2D::new(-3, -3), Point2D::new(-2, -3), Point2D::new(-1, -3)],
-    [Point2D::new(-3, 3), Point2D::new(-3, 2), Point2D::new(-3, 1)],
-    [Point2D::new(3, -3), Point2D::new(3, -2), Point2D::new(3, -1)],
-    [Point2D::new(3, 3), Point2D::new(2, 3), Point2D::new(1, 3)],
+    [Point2D::new(-3, -2), Point2D::new(-3, -3), Point2D::new(-2, -3)],
+    [Point2D::new(-2, 3), Point2D::new(-3, 3), Point2D::new(-3, 2)],
+    [Point2D::new(2, -3), Point2D::new(3, -3), Point2D::new(3, -2)],
+    [Point2D::new(3, 2), Point2D::new(3, 3), Point2D::new(2, 3)],
 ];
 
 pub struct SnakeAdapter {
