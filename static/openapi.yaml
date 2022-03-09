@@ -10,7 +10,7 @@ info:
   license:
     name: Dual MIT/Apache 2.0
     url: https://github.com/search?q=repo%3ATeamKilo%2Fkilo_server+filename%3ALICENSE&type=Code
-  version: 0.1.0
+  version: 1.0.0
 servers:
   - url: https://team-kilo-server.herokuapp.com/api
 tags:
@@ -107,15 +107,15 @@ paths:
             default: last_updated
           description: >
             What the game summary list is sorted by
-            
+
             - `game_type` - Sort by the type of game
-            
+
             - `players` - Sort by the number of players
-            
+
             - `stage` - Sort by the game stage
-            
+
             - `last_updated` - Sort by the time the game was lasted updated
-            
+
             Game summaries with equal values for each key are sorted by the
             following key in the above list
           required: false
