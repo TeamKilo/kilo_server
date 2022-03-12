@@ -18,10 +18,25 @@ const BOARD_MAX_X: i32 = 5;
 const BOARD_MIN_Y: i32 = -5;
 const BOARD_MAX_Y: i32 = 5;
 
+const EMPTY_FRUIT_PROB: f64 = 0.5;
+const NON_EMPTY_FRUIT_PROB: f64 = 0.15;
+
 const STARTS: [[Point2D; 3]; NUM_PLAYERS] = [
-    [Point2D::new(-3, -2), Point2D::new(-3, -3), Point2D::new(-2, -3)],
-    [Point2D::new(-2, 3), Point2D::new(-3, 3), Point2D::new(-3, 2)],
-    [Point2D::new(2, -3), Point2D::new(3, -3), Point2D::new(3, -2)],
+    [
+        Point2D::new(-3, -2),
+        Point2D::new(-3, -3),
+        Point2D::new(-2, -3),
+    ],
+    [
+        Point2D::new(-2, 3),
+        Point2D::new(-3, 3),
+        Point2D::new(-3, 2),
+    ],
+    [
+        Point2D::new(2, -3),
+        Point2D::new(3, -3),
+        Point2D::new(3, -2),
+    ],
     [Point2D::new(3, 2), Point2D::new(3, 3), Point2D::new(2, 3)],
 ];
 
@@ -265,10 +280,11 @@ impl Snake {
         self.moves.clear();
 
         let fruit_prob = if self.state.fruits.is_empty() {
-            0.5
+            EMPTY_FRUIT_PROB
         } else {
-            0.15
+            NON_EMPTY_FRUIT_PROB
         };
+
         if rand::thread_rng().gen_bool(fruit_prob) {
             // Attempt to spawn a single new fruit
             for _ in 0..10 {
